@@ -8,6 +8,12 @@
 3. Start server:
    - `uvicorn server:app --reload --port 8000`
 
+## PharmacyMCP in this repo
+
+- PharmacyMCP is expected at `backend/PharmacyMCP`.
+- During `POST /setup`, backend tries to enrich medication profiles using PharmacyMCP tools.
+- If PharmacyMCP import or lookup fails, backend falls back to `mock_data.py` automatically.
+
 ## Gemini (optional, low-cost/free-tier friendly)
 
 1. Get a key from Google AI Studio.
@@ -15,8 +21,9 @@
 3. Set:
    - `MOCK_MODE=false`
    - `LLM_PROVIDER=gemini`
+   - `PHARMACY_MCP_ENABLED=true`
    - `GOOGLE_API_KEY=...`
-   - `GEMINI_MODEL=gemini-1.5-flash`
+   - `GEMINI_MODEL=gemini-2.5-flash`
 
 If key/model is missing or fails, backend automatically falls back to mock rule-based response.
 
@@ -31,4 +38,4 @@ If key/model is missing or fails, backend automatically falls back to mock rule-
 ## Notes
 
 - Current implementation uses mock medication data and rule-based tools.
-- You can switch to Gemini by env config, or later replace with Strands + Bedrock.
+- You can switch to Gemini by env config with automatic fallback to mock mode.

@@ -1,26 +1,190 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './PatientCheckIn.css';
 
 const QUICK_SYMPTOMS = ['Headache', 'Nausea', 'Dizziness', 'Fatigue'];
 
-const DEMO_MESSAGES = [
-  { id: 1, from: 'ai', text: 'Hello Maria! 👋 How are you feeling today?', time: '10:20 AM' },
-  { id: 2, from: 'user', text: "I'm feeling good, but I had a slight headache earlier.", time: '10:21 AM' },
-  { id: 3, from: 'ai', text: "I'm sorry to hear about your headache. Can you tell me more about it? When did it start and how would you rate the pain on a scale of 1-10?", time: '10:21 AM' },
+const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
+
+const MARIA_PROFILE = {
+  name: 'Maria Chen',
+  age: 58,
+  conditions: ['Type 2 Diabetes', 'Hypertension', 'High Cholesterol'],
+  medications: ['Metformin', 'Lisinopril', 'Atorvastatin'],
+};
+
+const now = () => new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+const INITIAL_MESSAGES = [
+  { id: 1, from: 'ai', text: 'Hello Maria! 👋 How are you feeling today?', time: now() },
 ];
 
-export default function PatientCheckIn() {
-  const [messages, setMessages] = useState(DEMO_MESSAGES);
-  const [input, setInput] = useState('');
+const readSSE = async (response, onEvent) => {
+  if (!response.ok || !response.body) {
+    throw new Error(`Request failed (${response.status})`);
+  }
 
-  const handleSend = (e) => {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n');
+
+    const events = buffer.split('\n\n');
+    buffer = events.pop() || '';
+
+    for (const chunk of events) {
+      const dataLines = chunk
+        .split('\n')
+        .filter((line) => line.startsWith('data:'))
+        .map((line) => line.replace(/^data:\s?/, ''));
+
+      if (!dataLines.length) continue;
+
+      const payload = dataLines.join('\n').trim();
+      if (payload === '[DONE]') return;
+
+      try {
+        onEvent(JSON.parse(payload));
+      } catch {
+        // ignore malformed chunks
+      }
+    }
+  }
+};
+
+export default function PatientCheckIn() {
+  const navigate = useNavigate();
+  const [messages, setMessages] = useState(INITIAL_MESSAGES);
+  const [input, setInput] = useState('');
+  const [patientId, setPatientId] = useState(localStorage.getItem('mediguard_patient_id') || '');
+  const [status, setStatus] = useState('Connecting to backend...');
+  const [loading, setLoading] = useState(false);
+  const pendingAiMessageId = useRef(null);
+  const messageId = useRef(2);
+  const hasInitialized = useRef(false);
+
+  const isConnected = useMemo(() => Boolean(patientId), [patientId]);
+
+  const appendMessage = (from, text) => {
+    const id = messageId.current++;
+    setMessages((m) => [...m, { id, from, text, time: now() }]);
+    return id;
+  };
+
+  useEffect(() => {
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
+    if (patientId) {
+      setStatus('Connected to backend');
+      return;
+    }
+
+    const setup = async () => {
+      try {
+        const res = await fetch(`${API}/setup`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(MARIA_PROFILE),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.patient_id) throw new Error('Setup failed');
+
+        setPatientId(data.patient_id);
+        localStorage.setItem('mediguard_patient_id', data.patient_id);
+        setStatus('Connected to backend');
+      } catch {
+        setStatus('Backend offline: running in UI-only mode');
+      }
+    };
+
+    setup();
+  }, [patientId]);
+
+  const handleSend = async (e) => {
     e.preventDefault();
-    if (!input.trim()) return;
-    setMessages((m) => [
-      ...m,
-      { id: m.length + 1, from: 'user', text: input.trim(), time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) },
-    ]);
+    if (!input.trim() || loading) return;
+
+    const userText = input.trim();
+    appendMessage('user', userText);
     setInput('');
+
+    if (!patientId) {
+      appendMessage('ai', 'I cannot reach the backend right now. Please check if server is running on port 8000.');
+      return;
+    }
+
+    setLoading(true);
+    const aiId = appendMessage('ai', '');
+    pendingAiMessageId.current = aiId;
+
+    try {
+      const response = await fetch(`${API}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patient_id: patientId, message: userText }),
+      });
+
+      await readSSE(response, (event) => {
+        if (event.type === 'token' && pendingAiMessageId.current) {
+          setMessages((prev) => prev.map((msg) => (
+            msg.id === pendingAiMessageId.current
+              ? { ...msg, text: `${msg.text}${event.content || ''}` }
+              : msg
+          )));
+        }
+
+        if (event.type === 'report_ready') {
+          if (typeof event.content === 'string') {
+            localStorage.setItem('mediguard_latest_report', event.content);
+          }
+          appendMessage('ai', 'Doctor report generated. Open the report tab to view it.');
+        }
+
+        if (event.type === 'tool_call') {
+          appendMessage('ai', `Tool used: ${event.content}`);
+        }
+
+        if (event.type === 'error') {
+          appendMessage('ai', `Error: ${event.content}`);
+        }
+      });
+    } catch {
+      appendMessage('ai', 'Failed to stream response from backend.');
+    } finally {
+      pendingAiMessageId.current = null;
+      setLoading(false);
+    }
+  };
+
+  const runProactiveCheckin = async () => {
+    if (!patientId || loading) return;
+    setLoading(true);
+    const aiId = appendMessage('ai', '');
+    pendingAiMessageId.current = aiId;
+
+    try {
+      const response = await fetch(`${API}/proactive-checkin/${patientId}`, { method: 'POST' });
+
+      await readSSE(response, (event) => {
+        if (event.type === 'token' && pendingAiMessageId.current) {
+          setMessages((prev) => prev.map((msg) => (
+            msg.id === pendingAiMessageId.current
+              ? { ...msg, text: `${msg.text}${event.content || ''}` }
+              : msg
+          )));
+        }
+      });
+    } catch {
+      appendMessage('ai', 'Failed to run proactive check-in.');
+    } finally {
+      pendingAiMessageId.current = null;
+      setLoading(false);
+    }
   };
 
   const addQuickSymptom = (symptom) => {
@@ -33,8 +197,14 @@ export default function PatientCheckIn() {
         <span className="checkin-header-icon">🤖</span>
         <div>
           <h1 className="checkin-title">AI Health Assistant</h1>
-          <span className="checkin-status">Online and ready to help</span>
+          <span className="checkin-status">{status}</span>
         </div>
+        <button type="button" className="checkin-proactive-btn" onClick={runProactiveCheckin} disabled={!isConnected || loading}>
+          Simulate Agent Check-in
+        </button>
+        <button type="button" className="checkin-proactive-btn" onClick={() => navigate('/dashboard/report')}>
+          View Doctor Report
+        </button>
       </div>
       <div className="checkin-chat">
         {messages.map((msg) => (
@@ -73,8 +243,9 @@ export default function PatientCheckIn() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           aria-label="Message"
+          disabled={loading}
         />
-        <button type="submit" className="checkin-send" aria-label="Send">✈</button>
+        <button type="submit" className="checkin-send" aria-label="Send" disabled={loading || !isConnected}>✈</button>
       </form>
     </div>
   );

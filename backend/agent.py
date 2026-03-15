@@ -5,12 +5,13 @@ import importlib
 import json
 import os
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import AsyncIterator
 
 from dotenv import load_dotenv
 
 from mock_data import MOCK_MEDICATION_DB, PATIENTS, MedicationProfile, PatientRecord
+from pharmacy_mcp_adapter import lookup_medication_profile
 from tools import assess_symptoms, generate_doctor_report
 
 
@@ -19,7 +20,7 @@ load_dotenv()
 
 async def _emit(event_type: str, content: str | dict) -> str:
     payload = {"type": event_type, "content": content}
-    return f"data: {json.dumps(payload)}\\n\\n"
+    return f"data: {json.dumps(payload)}\n\n"
 
 
 def _normalize_medication_name(name: str) -> str:
@@ -41,7 +42,20 @@ def _rule_based_response(patient: PatientRecord, assessment: dict) -> str:
     )
 
 
-def _gemini_response(patient: PatientRecord, user_message: str, assessment: dict) -> str | None:
+def _extract_medication_from_text(user_text: str, medications: list[str]) -> str | None:
+    text = user_text.lower()
+    for med in medications:
+        if med.lower() in text:
+            return med
+    return None
+
+
+def _gemini_response(
+    patient: PatientRecord,
+    user_message: str,
+    assessment: dict,
+    pharmacy_context: str | None = None,
+) -> str | None:
     api_key = os.getenv("GOOGLE_API_KEY")
     model = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
     if not api_key:
@@ -62,6 +76,7 @@ def _gemini_response(patient: PatientRecord, user_message: str, assessment: dict
         f"Assessment: urgency={assessment.get('urgency')}, "
         f"severity={assessment.get('severity_score')}/10, "
         f"matched_medication={assessment.get('matched_medication')}. "
+        f"Pharmacy context: {pharmacy_context or 'none'}. "
         "Provide supportive guidance and clear next step."
     )
 
@@ -77,14 +92,25 @@ def _gemini_response(patient: PatientRecord, user_message: str, assessment: dict
     return None
 
 
-async def _generate_agent_response(patient: PatientRecord, user_message: str, assessment: dict) -> str:
+async def _generate_agent_response(
+    patient: PatientRecord,
+    user_message: str,
+    assessment: dict,
+    pharmacy_context: str | None = None,
+) -> str:
     mock_mode = _env_flag("MOCK_MODE", default=True)
     provider = os.getenv("LLM_PROVIDER", "mock").strip().lower()
 
     if mock_mode or provider != "gemini":
         return _rule_based_response(patient, assessment)
 
-    gemini_text = await asyncio.to_thread(_gemini_response, patient, user_message, assessment)
+    gemini_text = await asyncio.to_thread(
+        _gemini_response,
+        patient,
+        user_message,
+        assessment,
+        pharmacy_context,
+    )
     if gemini_text:
         return gemini_text
 
@@ -92,16 +118,18 @@ async def _generate_agent_response(patient: PatientRecord, user_message: str, as
 
 
 def _build_profile(medication_name: str) -> MedicationProfile:
-    key = _normalize_medication_name(medication_name)
-    source = MOCK_MEDICATION_DB.get(
-        key,
-        {
-            "dosage": "Unknown",
-            "schedule": "Unknown",
-            "side_effect_windows": {"unknown": "No data available"},
-            "common_side_effects": [],
-        },
-    )
+    source = lookup_medication_profile(medication_name)
+    if not source:
+        key = _normalize_medication_name(medication_name)
+        source = MOCK_MEDICATION_DB.get(
+            key,
+            {
+                "dosage": "Unknown",
+                "schedule": "Unknown",
+                "side_effect_windows": {"unknown": "No data available"},
+                "common_side_effects": [],
+            },
+        )
     return MedicationProfile(
         name=medication_name,
         dosage=source["dosage"],
@@ -123,7 +151,7 @@ def setup_patient(payload: dict) -> PatientRecord:
         conditions=payload.get("conditions", []),
         medications=medications,
         profiles=profiles,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(UTC),
     )
     PATIENTS[patient_id] = record
     return record
@@ -133,7 +161,7 @@ async def proactive_checkin_stream(patient_id: str) -> AsyncIterator[str]:
     patient = PATIENTS.get(patient_id)
     if not patient:
         yield await _emit("error", "Patient not found")
-        yield "data: [DONE]\\n\\n"
+        yield "data: [DONE]\n\n"
         return
 
     yield await _emit("agent_initiated", "")
@@ -146,21 +174,38 @@ async def proactive_checkin_stream(patient_id: str) -> AsyncIterator[str]:
         yield await _emit("token", token + " ")
         await asyncio.sleep(0.02)
 
-    yield "data: [DONE]\\n\\n"
+    yield "data: [DONE]\n\n"
 
 
 async def chat_stream(patient_id: str, user_message: str) -> AsyncIterator[str]:
     patient = PATIENTS.get(patient_id)
     if not patient:
         yield await _emit("error", "Patient not found")
-        yield "data: [DONE]\\n\\n"
+        yield "data: [DONE]\n\n"
         return
 
     yield await _emit("tool_call", "assess_symptoms")
     assessment = assess_symptoms(user_text=user_message, medications=patient.medications)
     patient.latest_assessment = assessment
 
-    agent_response = await _generate_agent_response(patient, user_message, assessment)
+    pharmacy_context: str | None = None
+    mentioned_medication = _extract_medication_from_text(user_message, patient.medications)
+    if mentioned_medication:
+        yield await _emit("tool_call", "pharmacy_mcp_lookup")
+        profile = await asyncio.to_thread(lookup_medication_profile, mentioned_medication)
+        if profile:
+            pharmacy_context = (
+                f"{mentioned_medication}: dosage={profile.get('dosage', 'unknown')}, "
+                f"schedule={profile.get('schedule', 'unknown')}, "
+                f"highlights={', '.join(profile.get('common_side_effects', [])[:3]) or 'none'}"
+            )
+
+    agent_response = await _generate_agent_response(
+        patient,
+        user_message,
+        assessment,
+        pharmacy_context,
+    )
 
     for token in agent_response.split(" "):
         yield await _emit("token", token + " ")
@@ -179,4 +224,4 @@ async def chat_stream(patient_id: str, user_message: str) -> AsyncIterator[str]:
         patient.latest_report = report
         yield await _emit("report_ready", report)
 
-    yield "data: [DONE]\\n\\n"
+    yield "data: [DONE]\n\n"

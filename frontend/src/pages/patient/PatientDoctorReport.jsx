@@ -1,4 +1,7 @@
+import { useEffect, useState } from 'react';
 import './PatientDoctorReport.css';
+
+const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
 
 const MEDS_ADHERENCE = [
   { name: 'Lisinopril 10mg', pct: 100, detail: 'Daily at 8:00 AM - 7/7 doses taken' },
@@ -21,6 +24,29 @@ const SYMPTOMS_LOG = [
 const reportDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
 export default function PatientDoctorReport() {
+  const [latestReport, setLatestReport] = useState(localStorage.getItem('mediguard_latest_report') || '');
+
+  useEffect(() => {
+    const patientId = localStorage.getItem('mediguard_patient_id');
+    if (!patientId) return;
+
+    const fetchReport = async () => {
+      try {
+        const res = await fetch(`${API}/report/${patientId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data?.report) {
+          setLatestReport(data.report);
+          localStorage.setItem('mediguard_latest_report', data.report);
+        }
+      } catch {
+        // keep last cached report
+      }
+    };
+
+    fetchReport();
+  }, []);
+
   return (
     <div className="patient-page patient-report page-enter">
       <div className="report-header">
@@ -88,6 +114,14 @@ export default function PatientDoctorReport() {
               </li>
             ))}
           </ul>
+        </div>
+        <div className="dashboard-card report-card report-live-output" style={{ gridColumn: '1 / -1' }}>
+          <h3 className="report-card-title">🧾 Latest AI Doctor Report (Live)</h3>
+          {latestReport ? (
+            <pre className="report-live-pre">{latestReport}</pre>
+          ) : (
+            <p className="report-ai-intro">No backend-generated report found yet. Trigger a high-severity check-in from AI Check-In to generate one.</p>
+          )}
         </div>
       </div>
     </div>

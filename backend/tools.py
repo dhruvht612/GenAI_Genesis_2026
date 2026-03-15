@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 
 def assess_symptoms(
@@ -45,7 +45,7 @@ def assess_symptoms(
         "severity_score": score,
         "matched_medication": matched_medication,
         "rationale": rationale,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 
@@ -88,7 +88,7 @@ def generate_doctor_report(
             "- Assess for orthostatic hypotension and medication tolerance.",
             "- Consider dose adjustment or alternative if symptoms persist.",
             "",
-            f"Generated at: {datetime.utcnow().isoformat()}Z",
+            f"Generated at: {datetime.now(UTC).isoformat()}",
         ]
     )
 

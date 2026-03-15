@@ -230,6 +230,17 @@
   margin-top: 0.15rem;
 }
 
+.report-live-pre {
+  margin: 0;
+  padding: 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #f8f8f7;
+  white-space: pre-wrap;
+  line-height: 1.4;
+  font-size: 0.86rem;
+}
+
 @media (max-width: 768px) {
   .report-grid {
     grid-template-columns: 1fr;
