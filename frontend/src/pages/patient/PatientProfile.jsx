@@ -7,6 +7,9 @@ export default function PatientProfile() {
   const [pushNotifications, setPushNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [overview, setOverview] = useState(null);
+  const [newMedication, setNewMedication] = useState('');
+  const [savingMedication, setSavingMedication] = useState(false);
+  const [medicationStatus, setMedicationStatus] = useState('');
 
   useEffect(() => {
     const patientId = sessionStorage.getItem('mediguard_user_id');
@@ -26,10 +29,49 @@ export default function PatientProfile() {
     load();
   }, []);
 
+  const reloadOverview = async () => {
+    const id = sessionStorage.getItem('mediguard_user_id');
+    if (!id) return;
+    const res = await fetch(`${API}/patient/${id}/overview`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.detail || 'Failed to load profile');
+    setOverview(data);
+  };
+
   const displayName = overview?.name || sessionStorage.getItem('mediguard_displayName') || 'Patient';
   const patientId = overview?.patient_id || sessionStorage.getItem('mediguard_user_id') || 'N/A';
   const contact = overview?.contact || {};
   const meds = overview?.medication_plan || [];
+
+  const handleAddMedication = async () => {
+    const med = newMedication.trim();
+    if (!med) return;
+
+    const patientId = sessionStorage.getItem('mediguard_user_id');
+    if (!patientId) return;
+
+    const currentMeds = overview?.medications || [];
+    const updated = Array.from(new Set([...currentMeds, med]));
+
+    setSavingMedication(true);
+    setMedicationStatus('');
+    try {
+      const res = await fetch(`${API}/patient/${patientId}/medications`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ medications: updated }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.detail || 'Failed to save medication');
+      setNewMedication('');
+      setMedicationStatus('Medication added');
+      await reloadOverview();
+    } catch {
+      setMedicationStatus('Could not add medication');
+    } finally {
+      setSavingMedication(false);
+    }
+  };
 
   return (
     <div className="patient-page patient-profile page-enter">
@@ -102,6 +144,20 @@ export default function PatientProfile() {
           </div>
           <div className="dashboard-card profile-meds-card">
             <h3 className="profile-card-heading">💊 Active Medications</h3>
+            <div className="profile-add-medication-row">
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Add medication (e.g. Acetaminophen 500mg)"
+                value={newMedication}
+                onChange={(e) => setNewMedication(e.target.value)}
+                disabled={savingMedication}
+              />
+              <button type="button" className="profile-add-medication-btn" onClick={handleAddMedication} disabled={savingMedication}>
+                {savingMedication ? 'Saving...' : 'Add'}
+              </button>
+            </div>
+            {medicationStatus && <p className="profile-notifications-placeholder">{medicationStatus}</p>}
             {meds.map((m, i) => (
               <div key={i} className="profile-med-row">
                 <strong>{m.name}</strong>

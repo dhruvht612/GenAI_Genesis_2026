@@ -193,6 +193,28 @@
   margin-bottom: 0.5rem;
 }
 
+.profile-add-medication-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.profile-add-medication-btn {
+  border: none;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: white;
+  padding: 0 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.profile-add-medication-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .profile-med-row:last-child {
   margin-bottom: 0;
 }

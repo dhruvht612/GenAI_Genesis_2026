@@ -396,6 +396,65 @@ def get_patient_metadata(patient_id: str) -> dict[str, Any]:
     }
 
 
+def update_patient_medications(patient_id: str, medications: list[str]) -> bool:
+    with _connect() as conn:
+        row = conn.execute("SELECT id FROM patients WHERE id = ?", (patient_id,)).fetchone()
+        if not row:
+            return False
+
+        conn.execute(
+            "UPDATE patients SET medications_json = ? WHERE id = ?",
+            (json.dumps(medications), patient_id),
+        )
+
+        existing_meta = conn.execute(
+            "SELECT * FROM patient_metadata WHERE patient_id = ?", (patient_id,)
+        ).fetchone()
+
+        default_plan = [
+            {
+                "name": med,
+                "for": "Condition management",
+                "time": "8:00 AM",
+                "completed": False,
+            }
+            for med in medications
+        ]
+
+        if existing_meta:
+            conn.execute(
+                """
+                UPDATE patient_metadata
+                SET medication_plan_json = ?, updated_at = ?
+                WHERE patient_id = ?
+                """,
+                (json.dumps(default_plan), datetime.now(UTC).isoformat(), patient_id),
+            )
+        else:
+            conn.execute(
+                """
+                INSERT INTO patient_metadata (
+                    patient_id, date_of_birth, blood_type, allergies_json, contact_json, location,
+                    medication_plan_json, symptoms_log_json, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    patient_id,
+                    None,
+                    None,
+                    json.dumps([]),
+                    json.dumps({}),
+                    None,
+                    json.dumps(default_plan),
+                    json.dumps([]),
+                    datetime.now(UTC).isoformat(),
+                ),
+            )
+
+        conn.commit()
+    return True
+
+
 def add_report_event(
     *,
     patient_id: str,

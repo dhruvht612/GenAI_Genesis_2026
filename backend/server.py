@@ -17,6 +17,7 @@ from storage import (
     initialize_db,
     list_patients_by_doctor,
     list_reports_for_doctor,
+    update_patient_medications,
 )
 
 initialize_db()
@@ -58,6 +59,10 @@ class LoginRequest(BaseModel):
     role: str = Field(..., examples=["patient", "doctor"])
     email: str
     password: str
+
+
+class PatientMedicationsRequest(BaseModel):
+    medications: list[str] = Field(default_factory=list)
 
 
 @app.get("/health")
@@ -168,6 +173,18 @@ def patient_overview(patient_id: str) -> dict:
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
     metadata = get_patient_metadata(patient_id)
+    medication_plan = metadata.get("medication_plan", [])
+    if not medication_plan and patient.medications:
+        medication_plan = [
+            {
+                "name": med,
+                "for": "Condition management",
+                "time": "8:00 AM",
+                "completed": False,
+            }
+            for med in patient.medications
+        ]
+
     return {
         "patient_id": patient.id,
         "name": patient.name,
@@ -175,7 +192,7 @@ def patient_overview(patient_id: str) -> dict:
         "conditions": patient.conditions,
         "medications": patient.medications,
         "latest_assessment": patient.latest_assessment,
-        "medication_plan": metadata.get("medication_plan", []),
+        "medication_plan": medication_plan,
         "symptoms_log": metadata.get("symptoms_log", []),
         "blood_type": metadata.get("blood_type"),
         "allergies": metadata.get("allergies", []),
@@ -183,6 +200,15 @@ def patient_overview(patient_id: str) -> dict:
         "contact": metadata.get("contact", {}),
         "location": metadata.get("location"),
     }
+
+
+@app.post("/patient/{patient_id}/medications")
+def update_medications(patient_id: str, payload: PatientMedicationsRequest) -> dict:
+    meds = [m.strip() for m in payload.medications if m.strip()]
+    ok = update_patient_medications(patient_id, meds)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return {"patient_id": patient_id, "medications": meds}
 
 
 @app.get("/doctor/{doctor_id}/patients")
