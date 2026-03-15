@@ -40,6 +40,15 @@
   font-size: 0.9rem;
   margin-bottom: 1rem;
 }
+.auth-error-msg {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #991b1b;
+  padding: 0.65rem 0.8rem;
+  border-radius: 10px;
+  margin: 0 0 1rem 0;
+  font-size: 0.9rem;
+}
 
 .auth-form {
   display: flex;

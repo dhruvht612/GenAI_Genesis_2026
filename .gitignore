@@ -11,6 +11,11 @@ venv/
 .env.*
 !.env.example
 
+# Local databases
+*.db
+*.sqlite3
+!backend/mediaguard.db
+
 # OS/editor
 .DS_Store
 .vscode/

@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 
 from mock_data import MOCK_MEDICATION_DB, PATIENTS, MedicationProfile, PatientRecord
 from pharmacy_mcp_adapter import lookup_medication_profile
+from storage import get_patient, upsert_patient
 from tools import assess_symptoms, generate_doctor_report
 
 
@@ -154,11 +155,23 @@ def setup_patient(payload: dict) -> PatientRecord:
         created_at=datetime.now(UTC),
     )
     PATIENTS[patient_id] = record
+    upsert_patient(record)
     return record
 
 
-async def proactive_checkin_stream(patient_id: str) -> AsyncIterator[str]:
+def _get_patient(patient_id: str) -> PatientRecord | None:
     patient = PATIENTS.get(patient_id)
+    if patient:
+        return patient
+
+    stored = get_patient(patient_id)
+    if stored:
+        PATIENTS[patient_id] = stored
+    return stored
+
+
+async def proactive_checkin_stream(patient_id: str) -> AsyncIterator[str]:
+    patient = _get_patient(patient_id)
     if not patient:
         yield await _emit("error", "Patient not found")
         yield "data: [DONE]\n\n"
@@ -178,7 +191,7 @@ async def proactive_checkin_stream(patient_id: str) -> AsyncIterator[str]:
 
 
 async def chat_stream(patient_id: str, user_message: str) -> AsyncIterator[str]:
-    patient = PATIENTS.get(patient_id)
+    patient = _get_patient(patient_id)
     if not patient:
         yield await _emit("error", "Patient not found")
         yield "data: [DONE]\n\n"
@@ -187,6 +200,7 @@ async def chat_stream(patient_id: str, user_message: str) -> AsyncIterator[str]:
     yield await _emit("tool_call", "assess_symptoms")
     assessment = assess_symptoms(user_text=user_message, medications=patient.medications)
     patient.latest_assessment = assessment
+    upsert_patient(patient)
 
     pharmacy_context: str | None = None
     mentioned_medication = _extract_medication_from_text(user_message, patient.medications)
@@ -222,6 +236,7 @@ async def chat_stream(patient_id: str, user_message: str) -> AsyncIterator[str]:
             assessment=assessment,
         )
         patient.latest_report = report
+        upsert_patient(patient)
         yield await _emit("report_ready", report)
 
     yield "data: [DONE]\n\n"

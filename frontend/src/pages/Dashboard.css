@@ -1178,6 +1178,18 @@
   padding: 0;
 }
 
+.patient-meds-empty-overview {
+  margin: 0;
+  padding: 1rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.patient-meds-empty-overview a {
+  color: var(--primary);
+  font-weight: 500;
+}
+
 .patient-med-item {
   display: flex;
   align-items: center;
