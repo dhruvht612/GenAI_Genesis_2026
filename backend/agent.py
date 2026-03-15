@@ -5,14 +5,15 @@ import importlib
 import json
 import os
 import uuid
+import re
 from datetime import UTC, datetime
 from typing import AsyncIterator
 
 from dotenv import load_dotenv
 
-from mock_data import MOCK_MEDICATION_DB, PATIENTS, MedicationProfile, PatientRecord
+from mock_data import MOCK_MEDICATION_DB, MedicationProfile, PatientRecord
 from pharmacy_mcp_adapter import lookup_medication_profile
-from storage import get_patient, upsert_patient
+from storage import add_report_event, get_patient, upsert_patient
 from tools import assess_symptoms, generate_doctor_report
 
 
@@ -93,6 +94,43 @@ def _gemini_response(
     return None
 
 
+def _gemini_should_generate_report(
+    patient: PatientRecord,
+    user_message: str,
+    assessment: dict,
+) -> bool:
+    api_key = os.getenv("GOOGLE_API_KEY")
+    model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+    if not api_key:
+        return assessment.get("severity_score", 0) >= 7
+
+    try:
+        genai = importlib.import_module("google.genai")
+    except Exception:
+        return assessment.get("severity_score", 0) >= 7
+
+    prompt = (
+        "You are a triage decision system. Return ONLY YES or NO. "
+        f"Patient age: {patient.age}. Conditions: {', '.join(patient.conditions)}. "
+        f"Message: {user_message}. "
+        f"Rule assessment urgency={assessment.get('urgency')} severity={assessment.get('severity_score')}/10. "
+        "Should a doctor-facing report be generated now?"
+    )
+
+    try:
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(model=model, contents=prompt)
+        text = (getattr(response, "text", "") or "").strip().upper()
+        if re.search(r"\bYES\b", text):
+            return True
+        if re.search(r"\bNO\b", text):
+            return False
+    except Exception:
+        pass
+
+    return assessment.get("severity_score", 0) >= 7
+
+
 async def _generate_agent_response(
     patient: PatientRecord,
     user_message: str,
@@ -149,25 +187,18 @@ def setup_patient(payload: dict) -> PatientRecord:
         id=patient_id,
         name=payload["name"],
         age=payload["age"],
+        assigned_doctor_id=payload.get("assigned_doctor_id", "DR-1001"),
         conditions=payload.get("conditions", []),
         medications=medications,
         profiles=profiles,
         created_at=datetime.now(UTC),
     )
-    PATIENTS[patient_id] = record
     upsert_patient(record)
     return record
 
 
 def _get_patient(patient_id: str) -> PatientRecord | None:
-    patient = PATIENTS.get(patient_id)
-    if patient:
-        return patient
-
-    stored = get_patient(patient_id)
-    if stored:
-        PATIENTS[patient_id] = stored
-    return stored
+    return get_patient(patient_id)
 
 
 async def proactive_checkin_stream(patient_id: str) -> AsyncIterator[str]:
@@ -225,7 +256,14 @@ async def chat_stream(patient_id: str, user_message: str) -> AsyncIterator[str]:
         yield await _emit("token", token + " ")
         await asyncio.sleep(0.02)
 
-    if assessment["severity_score"] >= 7:
+    should_report = await asyncio.to_thread(
+        _gemini_should_generate_report,
+        patient,
+        user_message,
+        assessment,
+    )
+
+    if should_report:
         yield await _emit("tool_call", "generate_doctor_report")
         report = generate_doctor_report(
             patient_name=patient.name,
@@ -237,6 +275,12 @@ async def chat_stream(patient_id: str, user_message: str) -> AsyncIterator[str]:
         )
         patient.latest_report = report
         upsert_patient(patient)
+        add_report_event(
+            patient_id=patient.id,
+            report_text=report,
+            urgency=assessment.get("urgency"),
+            severity_score=assessment.get("severity_score"),
+        )
         yield await _emit("report_ready", report)
 
     yield "data: [DONE]\n\n"

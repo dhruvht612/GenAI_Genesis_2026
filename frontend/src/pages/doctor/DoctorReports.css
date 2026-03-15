@@ -184,6 +184,22 @@
   margin: 0 0 1.25rem 0;
 }
 
+.report-ai-intro {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.report-live-pre {
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #f8f8f7;
+  white-space: pre-wrap;
+  line-height: 1.45;
+  font-size: 0.86rem;
+}
+
 .reports-summary-content {
   display: flex;
   flex-direction: column;

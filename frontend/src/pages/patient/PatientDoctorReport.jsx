@@ -25,10 +25,22 @@ const reportDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
 
 export default function PatientDoctorReport() {
   const [latestReport, setLatestReport] = useState(localStorage.getItem('mediguard_latest_report') || '');
+  const [patientProfile, setPatientProfile] = useState(null);
 
   useEffect(() => {
-    const patientId = localStorage.getItem('mediguard_patient_id');
+    const patientId = sessionStorage.getItem('mediguard_user_id') || localStorage.getItem('mediguard_patient_id');
     if (!patientId) return;
+
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch(`${API}/patient/${patientId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        setPatientProfile(data);
+      } catch {
+        // keep defaults
+      }
+    };
 
     const fetchReport = async () => {
       try {
@@ -44,8 +56,15 @@ export default function PatientDoctorReport() {
       }
     };
 
+    fetchProfile();
     fetchReport();
   }, []);
+
+  const displayName = patientProfile?.name || sessionStorage.getItem('mediguard_displayName') || 'Patient';
+  const displayId = patientProfile?.patient_id || sessionStorage.getItem('mediguard_user_id') || 'N/A';
+  const displayAge = patientProfile?.age;
+  const conditions = patientProfile?.conditions || [];
+  const medications = patientProfile?.medications || [];
 
   return (
     <div className="patient-page patient-report page-enter">
@@ -68,15 +87,15 @@ export default function PatientDoctorReport() {
       </div>
       <div className="report-grid">
         <div className="dashboard-card report-card report-patient-info">
-          <span className="report-avatar">MJ</span>
-          <h3>Maria Johnson</h3>
-          <p className="report-meta">Patient ID: #MJ-2004</p>
-          <p className="report-meta"><strong>DATE OF BIRTH</strong><br />January 15, 1985</p>
-          <p className="report-meta"><strong>REPORT PERIOD</strong><br />Last 7 Days</p>
+          <span className="report-avatar">{displayName.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase()}</span>
+          <h3>{displayName}</h3>
+          <p className="report-meta">Patient ID: #{displayId}</p>
+          <p className="report-meta"><strong>AGE</strong><br />{displayAge || 'Unknown'}</p>
+          <p className="report-meta"><strong>CONDITIONS</strong><br />{conditions.length ? conditions.join(', ') : 'Not set'}</p>
         </div>
         <div className="dashboard-card report-card report-adherence">
           <h3 className="report-card-title">💊 Medications Adherence</h3>
-          {MEDS_ADHERENCE.map((m, i) => (
+          {(medications.length ? medications.map((m) => ({ name: m, pct: 100, detail: 'Active medication' })) : MEDS_ADHERENCE).map((m, i) => (
             <div key={i} className="report-adherence-item">
               <div className="report-adherence-header">
                 <span className="report-adherence-name">{m.name}</span>
@@ -88,7 +107,7 @@ export default function PatientDoctorReport() {
                   style={{ width: `${m.pct}%` }}
                 />
               </div>
-              <p className="report-adherence-detail">{m.detail}</p>
+              <p className="report-adherence-detail">{m.detail || 'Active medication'}</p>
             </div>
           ))}
         </div>

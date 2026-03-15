@@ -1,14 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import './DoctorReports.css';
 
-const PATIENTS = [
-  { id: 1, name: 'Sarah Johnson', initials: 'SJ', age: 45, gender: 'Female', conditions: 'Hypertension, Type 2 Diabetes', risk: 'high' },
-  { id: 2, name: 'Michael Chen', initials: 'MC', age: 62, gender: 'Male', conditions: 'COPD', risk: 'medium' },
-  { id: 3, name: 'Emily Rodriguez', initials: 'ER', age: 38, gender: 'Female', conditions: 'Asthma', risk: 'low' },
-  { id: 4, name: 'James Wilson', initials: 'JW', age: 71, gender: 'Male', conditions: 'Heart Failure, Hypertension', risk: 'high' },
-  { id: 5, name: 'Lisa Anderson', initials: 'LA', age: 52, gender: 'Female', conditions: 'Rheumatoid Arthritis', risk: 'low' },
-  { id: 6, name: 'David Martinez', initials: 'DM', age: 58, gender: 'Male', conditions: 'Type 2 Diabetes', risk: 'medium' },
-];
+const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
+
+const initialsFrom = (name = '') => name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
 
 const REPORT_TYPES = [
   { id: 'summary', label: 'Health Summary', desc: 'Overview of patient health status', icon: '📄' },
@@ -17,12 +12,42 @@ const REPORT_TYPES = [
 ];
 
 export default function DoctorReports() {
-  const [selectedId, setSelectedId] = useState(1);
+  const [reports, setReports] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
   const [reportType, setReportType] = useState('summary');
   const [sendRecommendation, setSendRecommendation] = useState(false);
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  const selected = PATIENTS.find((p) => p.id === selectedId) || PATIENTS[0];
+  useEffect(() => {
+    const doctorId = sessionStorage.getItem('mediguard_user_id');
+    if (!doctorId) {
+      setLoading(false);
+      return;
+    }
+
+    const load = async () => {
+      try {
+        const res = await fetch(`${API}/doctor/${doctorId}/reports`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.detail || 'Failed to load reports');
+        const rows = data.reports || [];
+        setReports(rows);
+        if (rows.length) setSelectedId(rows[0].report_id);
+      } catch {
+        setReports([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, []);
+
+  const selected = useMemo(
+    () => reports.find((r) => r.report_id === selectedId) || reports[0] || null,
+    [reports, selectedId],
+  );
 
   return (
     <div className="doctor-page doctor-reports page-enter">
@@ -30,35 +55,38 @@ export default function DoctorReports() {
       <p className="doctor-page-subtitle">Securely view patient reports and send recommendations.</p>
       <div className="reports-layout">
         <aside className="reports-patient-list">
-          <h2 className="reports-list-title">Select Patient</h2>
+          <h2 className="reports-list-title">Recent Reports</h2>
           <div className="reports-list">
-            {PATIENTS.map((p) => (
+            {reports.map((r) => (
               <button
-                key={p.id}
+                key={r.report_id}
                 type="button"
-                className={`reports-patient-item ${selectedId === p.id ? 'reports-patient-item-active' : ''}`}
-                onClick={() => setSelectedId(p.id)}
+                className={`reports-patient-item ${selectedId === r.report_id ? 'reports-patient-item-active' : ''}`}
+                onClick={() => setSelectedId(r.report_id)}
               >
-                <span className="reports-patient-avatar">{p.initials}</span>
+                <span className="reports-patient-avatar">{initialsFrom(r.patient_name)}</span>
                 <div className="reports-patient-info">
-                  <strong>{p.name}</strong>
-                  <span>{p.age} years - {p.conditions}</span>
+                  <strong>{r.patient_name}</strong>
+                  <span>{new Date(r.created_at).toLocaleString()}</span>
                 </div>
               </button>
             ))}
+            {!loading && reports.length === 0 && <p className="report-ai-intro">No reports yet.</p>}
           </div>
         </aside>
         <div className="reports-main">
-          <div className="dashboard-card reports-selected-card">
-            <span className="reports-selected-avatar">{selected.initials}</span>
-            <div className="reports-selected-info">
-              <strong>{selected.name}</strong>
-              <span>{selected.age} years - {selected.gender} - {selected.conditions}</span>
+          {selected && (
+            <div className="dashboard-card reports-selected-card">
+              <span className="reports-selected-avatar">{initialsFrom(selected.patient_name)}</span>
+              <div className="reports-selected-info">
+                <strong>{selected.patient_name}</strong>
+                <span>Patient ID: {selected.patient_id}</span>
+              </div>
+              <span className={`badge ${selected.urgency === 'high' ? 'badge-danger' : selected.urgency === 'medium' ? 'badge-warning' : 'badge-success'}`}>
+                {(selected.urgency || 'low').toUpperCase()} risk
+              </span>
             </div>
-            <span className={`badge ${selected.risk === 'high' ? 'badge-danger' : selected.risk === 'medium' ? 'badge-warning' : 'badge-success'}`}>
-              {selected.risk.charAt(0).toUpperCase() + selected.risk.slice(1)} risk
-            </span>
-          </div>
+          )}
           <div className="reports-type-tabs">
             {REPORT_TYPES.map((r) => (
               <button
@@ -76,35 +104,11 @@ export default function DoctorReports() {
           <div className="dashboard-card reports-preview">
             <h3 className="reports-preview-title">Patient Health Report</h3>
             <p className="reports-preview-subtitle">Health Summary Report · Generated: {new Date().toLocaleDateString('en-US')}</p>
-            <div className="reports-summary-content">
-              <div className="report-section">
-                <h4>👤 Patient Information</h4>
-                <p>Name: {selected.name}</p>
-                <p>Age: {selected.age} years · Gender: Female</p>
-                <p>Last Check-in: 2 hours ago</p>
-              </div>
-              <div className="report-section">
-                <h4>❤ Medical Conditions</h4>
-                <p><span className="report-tag">Hypertension</span> <span className="report-tag">Type 2 Diabetes</span></p>
-              </div>
-              <div className="report-section">
-                <h4>💊 Current Medications</h4>
-                <ul>
-                  <li>Lisinopril 10mg</li>
-                  <li>Metformin 500mg</li>
-                  <li>Atorvastatin 20mg</li>
-                </ul>
-              </div>
-              <div className="report-section">
-                <h4>Health Metrics</h4>
-                <p>Medication Adherence: 72%</p>
-                <p>Risk Status: <span className="badge badge-danger">High</span></p>
-              </div>
-              <div className="report-section report-ai-summary">
-                <h4>🤖 AI-Generated Summary</h4>
-                <p>Patient shows concern regarding medication adherence at 72%. Current risk level is high. Immediate follow-up recommended to address emerging health concerns.</p>
-              </div>
-            </div>
+            {selected ? (
+              <pre className="report-live-pre">{selected.report}</pre>
+            ) : (
+              <p className="report-ai-intro">Select a report from the left panel.</p>
+            )}
             <div className="reports-actions">
               <button type="button" className="btn-doctor btn-doctor-primary">📥 Download PDF</button>
               <button type="button" className="btn-doctor btn-doctor-secondary">🖨 Print Report</button>

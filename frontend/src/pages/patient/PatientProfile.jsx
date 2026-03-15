@@ -1,15 +1,35 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import './PatientProfile.css';
 
-const ACTIVE_MEDS = [
-  { name: 'Lisinopril 10mg', for: 'High Blood Pressure', reminder: 'Daily at 8:00 AM' },
-  { name: 'Metformin 500mg', for: 'Type 2 Diabetes', reminder: 'Daily at 8:00 AM' },
-  { name: 'Atorvastatin 20mg', for: 'High Cholesterol', reminder: 'Daily at 9:00 PM' },
-];
+const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
 
 export default function PatientProfile() {
   const [pushNotifications, setPushNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
+  const [overview, setOverview] = useState(null);
+
+  useEffect(() => {
+    const patientId = sessionStorage.getItem('mediguard_user_id');
+    if (!patientId) return;
+
+    const load = async () => {
+      try {
+        const res = await fetch(`${API}/patient/${patientId}/overview`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.detail || 'Failed to load profile');
+        setOverview(data);
+      } catch {
+        setOverview(null);
+      }
+    };
+
+    load();
+  }, []);
+
+  const displayName = overview?.name || sessionStorage.getItem('mediguard_displayName') || 'Patient';
+  const patientId = overview?.patient_id || sessionStorage.getItem('mediguard_user_id') || 'N/A';
+  const contact = overview?.contact || {};
+  const meds = overview?.medication_plan || [];
 
   return (
     <div className="patient-page patient-profile page-enter">
@@ -21,12 +41,12 @@ export default function PatientProfile() {
         <div className="profile-left">
           <div className="dashboard-card profile-card profile-card-teal">
             <span className="profile-card-icon">👤</span>
-            <h2 className="profile-name">Maria Johnson</h2>
-            <p className="profile-id">Patient ID: #MJ-2024-01</p>
+            <h2 className="profile-name">{displayName}</h2>
+            <p className="profile-id">Patient ID: #{patientId}</p>
             <div className="profile-contact">
-              <p><span className="profile-contact-icon">✉</span> maria.johnson@email.com</p>
-              <p><span className="profile-contact-icon">📞</span> +1 (555) 123-4567</p>
-              <p><span className="profile-contact-icon">📍</span> Toronto, ON</p>
+              <p><span className="profile-contact-icon">✉</span> {contact.email || sessionStorage.getItem('mediguard_email') || 'N/A'}</p>
+              <p><span className="profile-contact-icon">📞</span> {contact.phone || 'N/A'}</p>
+              <p><span className="profile-contact-icon">📍</span> {overview?.location || 'N/A'}</p>
             </div>
           </div>
           <div className="dashboard-card profile-settings-card">
@@ -65,30 +85,31 @@ export default function PatientProfile() {
             <div className="profile-health-rows">
               <a href="#age" className="profile-health-row">
                 <span>Age</span>
-                <span className="profile-health-value">41 years</span>
+                <span className="profile-health-value">{overview?.age ? `${overview.age} years` : 'Unknown'}</span>
                 <span className="profile-health-arrow">→</span>
               </a>
               <a href="#blood" className="profile-health-row">
                 <span>Blood Type</span>
-                <span className="profile-health-value">O-</span>
+                <span className="profile-health-value">{overview?.blood_type || 'Unknown'}</span>
                 <span className="profile-health-arrow">→</span>
               </a>
               <a href="#allergies" className="profile-health-row">
                 <span>Allergies</span>
-                <span className="profile-health-value">Penicillin</span>
+                <span className="profile-health-value">{(overview?.allergies || []).join(', ') || 'None listed'}</span>
                 <span className="profile-health-arrow">→</span>
               </a>
             </div>
           </div>
           <div className="dashboard-card profile-meds-card">
             <h3 className="profile-card-heading">💊 Active Medications</h3>
-            {ACTIVE_MEDS.map((m, i) => (
+            {meds.map((m, i) => (
               <div key={i} className="profile-med-row">
                 <strong>{m.name}</strong>
-                <span className="profile-med-for">For: {m.for}</span>
-                <span className="profile-med-reminder">{m.reminder}</span>
+                <span className="profile-med-for">For: {m.for || 'Condition management'}</span>
+                <span className="profile-med-reminder">Daily at {m.time || 'N/A'}</span>
               </div>
             ))}
+            {meds.length === 0 && <p className="profile-notifications-placeholder">No active medications in profile.</p>}
           </div>
           <div className="dashboard-card profile-notifications-card">
             <h3 className="profile-card-heading">🔔 Notification Times</h3>

@@ -4,8 +4,9 @@ import json
 import hashlib
 import secrets
 import sqlite3
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from mock_data import MedicationProfile, PatientRecord
 
@@ -26,6 +27,7 @@ def initialize_db() -> None:
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
                 age INTEGER NOT NULL,
+                assigned_doctor_id TEXT,
                 conditions_json TEXT NOT NULL,
                 medications_json TEXT NOT NULL,
                 profiles_json TEXT NOT NULL,
@@ -35,6 +37,8 @@ def initialize_db() -> None:
             )
             """
         )
+        _ensure_column(conn, "patients", "assigned_doctor_id", "TEXT")
+
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS users (
@@ -48,13 +52,43 @@ def initialize_db() -> None:
             """
         )
 
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS report_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                patient_id TEXT NOT NULL,
+                doctor_id TEXT,
+                report_text TEXT NOT NULL,
+                urgency TEXT,
+                severity_score INTEGER,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS patient_metadata (
+                patient_id TEXT PRIMARY KEY,
+                date_of_birth TEXT,
+                blood_type TEXT,
+                allergies_json TEXT,
+                contact_json TEXT,
+                location TEXT,
+                medication_plan_json TEXT,
+                symptoms_log_json TEXT,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+
         _seed_demo_user(
             conn,
             user_id="MJ-2024",
             role="patient",
             email="maria.chen@demo.mediguard.ca",
             password="demo123",
-            display_name="Maria",
+            display_name="Maria Chen",
         )
         _seed_demo_user(
             conn,
@@ -65,6 +99,15 @@ def initialize_db() -> None:
             display_name="Dr. Smith",
         )
         conn.commit()
+
+    _seed_demo_patient_metadata()
+
+
+def _ensure_column(conn: sqlite3.Connection, table: str, column: str, ddl_type: str) -> None:
+    cols = conn.execute(f"PRAGMA table_info({table})").fetchall()
+    names = {c[1] for c in cols}
+    if column not in names:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl_type}")
 
 
 def _hash_password(password: str, salt: str) -> str:
@@ -111,6 +154,30 @@ def _seed_demo_user(
             display_name,
             datetime.now().isoformat(),
         ),
+    )
+
+
+def _seed_demo_patient_metadata() -> None:
+    demo_medication_plan = [
+        {"name": "Lisinopril 10mg", "for": "High Blood Pressure", "time": "8:00 AM", "completed": True},
+        {"name": "Metformin 500mg", "for": "Type 2 Diabetes", "time": "8:00 AM", "completed": True},
+        {"name": "Atorvastatin 20mg", "for": "High Cholesterol", "time": "9:00 PM", "completed": False},
+    ]
+    symptoms = [
+        {"name": "Mild Headache", "count": 2, "severity": "3/10"},
+        {"name": "Dizziness", "count": 1, "severity": "2/10"},
+        {"name": "Fatigue", "count": 1, "severity": "4/10"},
+    ]
+
+    set_patient_metadata(
+        patient_id="MJ-2024",
+        date_of_birth="1985-01-15",
+        blood_type="O-",
+        allergies=["Penicillin"],
+        contact={"email": "maria.chen@demo.mediguard.ca", "phone": "+1 (555) 123-4567"},
+        location="Toronto, ON",
+        medication_plan=demo_medication_plan,
+        symptoms_log=symptoms,
     )
 
 
@@ -164,6 +231,19 @@ def authenticate_user(*, role: str, email: str, password: str) -> dict | None:
     }
 
 
+def get_user(user_id: str) -> dict[str, Any] | None:
+    with _connect() as conn:
+        row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not row:
+        return None
+    return {
+        "user_id": row["id"],
+        "role": row["role"],
+        "email": row["email"],
+        "display_name": row["display_name"],
+    }
+
+
 def upsert_patient(record: PatientRecord) -> None:
     profiles_json = json.dumps(
         [
@@ -182,12 +262,13 @@ def upsert_patient(record: PatientRecord) -> None:
         conn.execute(
             """
             INSERT INTO patients (
-                id, name, age, conditions_json, medications_json, profiles_json,
+                id, name, age, assigned_doctor_id, conditions_json, medications_json, profiles_json,
                 created_at, latest_report, latest_assessment_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 name=excluded.name,
                 age=excluded.age,
+                assigned_doctor_id=excluded.assigned_doctor_id,
                 conditions_json=excluded.conditions_json,
                 medications_json=excluded.medications_json,
                 profiles_json=excluded.profiles_json,
@@ -199,6 +280,7 @@ def upsert_patient(record: PatientRecord) -> None:
                 record.id,
                 record.name,
                 record.age,
+                record.assigned_doctor_id,
                 json.dumps(record.conditions),
                 json.dumps(record.medications),
                 profiles_json,
@@ -235,6 +317,7 @@ def get_patient(patient_id: str) -> PatientRecord | None:
         id=row["id"],
         name=row["name"],
         age=int(row["age"]),
+        assigned_doctor_id=row["assigned_doctor_id"],
         conditions=json.loads(row["conditions_json"]),
         medications=json.loads(row["medications_json"]),
         profiles=profiles,
@@ -242,3 +325,160 @@ def get_patient(patient_id: str) -> PatientRecord | None:
         latest_report=row["latest_report"],
         latest_assessment=json.loads(row["latest_assessment_json"]) if row["latest_assessment_json"] else None,
     )
+
+
+def set_patient_metadata(
+    *,
+    patient_id: str,
+    date_of_birth: str | None,
+    blood_type: str | None,
+    allergies: list[str],
+    contact: dict[str, Any],
+    location: str | None,
+    medication_plan: list[dict[str, Any]],
+    symptoms_log: list[dict[str, Any]],
+) -> None:
+    with _connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO patient_metadata (
+                patient_id, date_of_birth, blood_type, allergies_json, contact_json, location,
+                medication_plan_json, symptoms_log_json, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(patient_id) DO UPDATE SET
+                date_of_birth=excluded.date_of_birth,
+                blood_type=excluded.blood_type,
+                allergies_json=excluded.allergies_json,
+                contact_json=excluded.contact_json,
+                location=excluded.location,
+                medication_plan_json=excluded.medication_plan_json,
+                symptoms_log_json=excluded.symptoms_log_json,
+                updated_at=excluded.updated_at
+            """,
+            (
+                patient_id,
+                date_of_birth,
+                blood_type,
+                json.dumps(allergies),
+                json.dumps(contact),
+                location,
+                json.dumps(medication_plan),
+                json.dumps(symptoms_log),
+                datetime.now(UTC).isoformat(),
+            ),
+        )
+        conn.commit()
+
+
+def get_patient_metadata(patient_id: str) -> dict[str, Any]:
+    with _connect() as conn:
+        row = conn.execute("SELECT * FROM patient_metadata WHERE patient_id = ?", (patient_id,)).fetchone()
+
+    if not row:
+        return {
+            "date_of_birth": None,
+            "blood_type": None,
+            "allergies": [],
+            "contact": {},
+            "location": None,
+            "medication_plan": [],
+            "symptoms_log": [],
+        }
+
+    return {
+        "date_of_birth": row["date_of_birth"],
+        "blood_type": row["blood_type"],
+        "allergies": json.loads(row["allergies_json"]) if row["allergies_json"] else [],
+        "contact": json.loads(row["contact_json"]) if row["contact_json"] else {},
+        "location": row["location"],
+        "medication_plan": json.loads(row["medication_plan_json"]) if row["medication_plan_json"] else [],
+        "symptoms_log": json.loads(row["symptoms_log_json"]) if row["symptoms_log_json"] else [],
+    }
+
+
+def add_report_event(
+    *,
+    patient_id: str,
+    report_text: str,
+    urgency: str | None,
+    severity_score: int | None,
+) -> None:
+    patient = get_patient(patient_id)
+    doctor_id = patient.assigned_doctor_id if patient else None
+
+    with _connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO report_events (patient_id, doctor_id, report_text, urgency, severity_score, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                patient_id,
+                doctor_id,
+                report_text,
+                urgency,
+                severity_score,
+                datetime.now(UTC).isoformat(),
+            ),
+        )
+        conn.commit()
+
+
+def list_patients_by_doctor(doctor_id: str) -> list[dict[str, Any]]:
+    with _connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, name, age, conditions_json, medications_json, latest_assessment_json, latest_report
+            FROM patients
+            WHERE assigned_doctor_id = ?
+            ORDER BY name ASC
+            """,
+            (doctor_id,),
+        ).fetchall()
+
+    output: list[dict[str, Any]] = []
+    for row in rows:
+        assessment = json.loads(row["latest_assessment_json"]) if row["latest_assessment_json"] else None
+        conditions = json.loads(row["conditions_json"])
+        medications = json.loads(row["medications_json"])
+        risk = (assessment or {}).get("urgency", "low")
+        output.append(
+            {
+                "patient_id": row["id"],
+                "name": row["name"],
+                "age": int(row["age"]),
+                "conditions": conditions,
+                "medications": medications,
+                "risk": risk,
+                "latest_assessment": assessment,
+                "has_report": bool(row["latest_report"]),
+            }
+        )
+    return output
+
+
+def list_reports_for_doctor(doctor_id: str) -> list[dict[str, Any]]:
+    with _connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT r.id, r.patient_id, p.name AS patient_name, r.report_text, r.urgency, r.severity_score, r.created_at
+            FROM report_events r
+            JOIN patients p ON p.id = r.patient_id
+            WHERE r.doctor_id = ?
+            ORDER BY r.created_at DESC
+            """,
+            (doctor_id,),
+        ).fetchall()
+
+    return [
+        {
+            "report_id": int(row["id"]),
+            "patient_id": row["patient_id"],
+            "patient_name": row["patient_name"],
+            "report": row["report_text"],
+            "urgency": row["urgency"],
+            "severity_score": row["severity_score"],
+            "created_at": row["created_at"],
+        }
+        for row in rows
+    ]

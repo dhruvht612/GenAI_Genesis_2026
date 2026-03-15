@@ -1,15 +1,7 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-const TODAYS_MEDS = [
-  { name: 'Lisinopril', dosage: '10mg', time: '8:00 AM', completed: true },
-  { name: 'Metformin', dosage: '500mg', time: '8:00 AM', completed: true },
-  { name: 'Atorvastatin', dosage: '20mg', time: '9:00 PM', completed: false },
-];
-
-const RECENT_SYMPTOMS = [
-  { name: 'Mild headache', count: 2 },
-  { name: 'Fatigue', count: 1 },
-];
+const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -19,6 +11,42 @@ function getGreeting() {
 }
 
 export default function PatientDashboardOverview() {
+  const [overview, setOverview] = useState(null);
+
+  useEffect(() => {
+    const patientId = sessionStorage.getItem('mediguard_user_id');
+    if (!patientId) return;
+
+    const load = async () => {
+      try {
+        const res = await fetch(`${API}/patient/${patientId}/overview`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.detail || 'Failed to load overview');
+        setOverview(data);
+      } catch {
+        setOverview(null);
+      }
+    };
+
+    load();
+  }, []);
+
+  const todaysMeds = useMemo(() => {
+    const meds = overview?.medication_plan || [];
+    return meds.map((m) => {
+      const parts = (m.name || '').split(' ');
+      return {
+        name: parts.slice(0, -1).join(' ') || m.name,
+        dosage: parts.slice(-1).join(' '),
+        time: m.time || 'N/A',
+        completed: Boolean(m.completed),
+      };
+    });
+  }, [overview]);
+
+  const recentSymptoms = overview?.symptoms_log || [];
+  const patientName = overview?.name || sessionStorage.getItem('mediguard_displayName') || 'Patient';
+
   return (
     <div className="patient-content page-enter">
       <div className="patient-greeting-row">
@@ -26,7 +54,7 @@ export default function PatientDashboardOverview() {
           <span className="patient-greeting-icon">🌙</span>
           <span className="patient-greeting-text">{getGreeting()}</span>
         </div>
-        <h1 className="patient-name">Maria</h1>
+        <h1 className="patient-name">{patientName.split(' ')[0]}</h1>
         <div className="patient-health-card">
           <span className="patient-health-label">Overall Health Status</span>
           <span className="patient-health-value">Excellent</span>
@@ -38,11 +66,11 @@ export default function PatientDashboardOverview() {
           <div className="patient-section-header">
             <h2 className="section-title">Today&apos;s Medications</h2>
             <span className="patient-med-progress">
-              {TODAYS_MEDS.filter((m) => m.completed).length}/{TODAYS_MEDS.length} Completed
+              {todaysMeds.filter((m) => m.completed).length}/{todaysMeds.length || 0} Completed
             </span>
           </div>
           <div className="dashboard-card patient-med-list">
-            {TODAYS_MEDS.map((med, i) => (
+            {todaysMeds.map((med, i) => (
               <div key={i} className="patient-med-item">
                 <span className={`patient-med-check ${med.completed ? 'patient-med-check-done' : ''}`}>
                   {med.completed ? '✓' : ''}
@@ -54,6 +82,7 @@ export default function PatientDashboardOverview() {
                 <button type="button" className="patient-med-link" aria-label="View details">🔗</button>
               </div>
             ))}
+            {todaysMeds.length === 0 && <p className="patient-symptoms-subtitle">No medications in profile yet.</p>}
           </div>
         </section>
         <div className="patient-right-col">
@@ -67,12 +96,13 @@ export default function PatientDashboardOverview() {
             <p className="patient-symptoms-subtitle">Last 7 days overview</p>
             <div className="dashboard-card patient-symptoms-card">
               <ul className="patient-symptoms-list">
-                {RECENT_SYMPTOMS.map((s, i) => (
+                {recentSymptoms.map((s, i) => (
                   <li key={i} className="patient-symptom-item">
-                    <span className="patient-symptom-name">{s.name}</span>
+                    <span className="patient-symptom-name">{s.name || 'Symptom'}</span>
                     <span className="patient-symptom-count">{s.count}x</span>
                   </li>
                 ))}
+                {recentSymptoms.length === 0 && <li className="patient-symptom-item"><span className="patient-symptom-name">No symptoms logged</span></li>}
               </ul>
             </div>
           </section>

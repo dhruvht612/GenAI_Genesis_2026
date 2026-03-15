@@ -9,6 +9,9 @@ export default function Dashboard() {
   const stateEmail = location.state?.email;
   const role = stateRole || sessionStorage.getItem('mediguard_role') || 'patient';
   const email = stateEmail || sessionStorage.getItem('mediguard_email') || '';
+  const displayName = sessionStorage.getItem('mediguard_displayName') || 'Patient';
+  const userId = sessionStorage.getItem('mediguard_user_id') || 'N/A';
+  const initials = displayName.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
 
   useEffect(() => {
     if (stateRole) sessionStorage.setItem('mediguard_role', stateRole);
@@ -61,10 +64,10 @@ export default function Dashboard() {
               </NavLink>
             </nav>
             <div className="patient-sidebar-footer">
-              <span className="patient-avatar">MJ</span>
+              <span className="patient-avatar">{initials}</span>
               <div className="patient-profile-info">
-                <span className="patient-profile-name">Maria Johnson</span>
-                <span className="patient-id">Patient ID: #MJ-2024</span>
+                <span className="patient-profile-name">{displayName}</span>
+                <span className="patient-id">Patient ID: #{userId}</span>
               </div>
             </div>
           </aside>

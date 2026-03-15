@@ -1,25 +1,45 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import './DoctorPatients.css';
 
-const PATIENTS = [
-  { id: 1, name: 'Sarah Johnson', initials: 'SJ', age: 45, gender: 'Female', conditions: ['Hypertension', 'Type 2 Diabetes'], medications: 3, risk: 'high', lastCheckIn: '2 hours ago', adherence: 72 },
-  { id: 2, name: 'Michael Chen', initials: 'MC', age: 62, gender: 'Male', conditions: ['COPD'], medications: 2, risk: 'medium', lastCheckIn: '1 day ago', adherence: 85 },
-  { id: 3, name: 'Emily Rodriguez', initials: 'ER', age: 38, gender: 'Female', conditions: ['Asthma'], medications: 1, risk: 'low', lastCheckIn: '3 hours ago', adherence: 94 },
-  { id: 4, name: 'James Wilson', initials: 'JW', age: 71, gender: 'Male', conditions: ['Heart Failure', 'Atrial Fibrillation'], medications: 4, risk: 'high', lastCheckIn: '3 hours ago', adherence: 68 },
-  { id: 5, name: 'Lisa Anderson', initials: 'LA', age: 52, gender: 'Female', conditions: ['Rheumatoid Arthritis'], medications: 2, risk: 'low', lastCheckIn: '6 hours ago', adherence: 91 },
-  { id: 6, name: 'David Martinez', initials: 'DM', age: 58, gender: 'Male', conditions: ['Type 2 Diabetes', 'Hyperlipidemia'], medications: 2, risk: 'medium', lastCheckIn: '4 hours ago', adherence: 79 },
-];
+const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
+
+const initialsFrom = (name = '') => name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
 
 export default function DoctorPatients() {
   const [riskFilter, setRiskFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [patients, setPatients] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = PATIENTS.filter((p) => {
+  useEffect(() => {
+    const doctorId = sessionStorage.getItem('mediguard_user_id');
+    if (!doctorId) {
+      setLoading(false);
+      return;
+    }
+
+    const load = async () => {
+      try {
+        const res = await fetch(`${API}/doctor/${doctorId}/patients`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.detail || 'Failed to load patients');
+        setPatients(data.patients || []);
+      } catch {
+        setPatients([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, []);
+
+  const filtered = useMemo(() => patients.filter((p) => {
     const matchRisk = riskFilter === 'all' || p.risk === riskFilter;
     const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.conditions.some((c) => c.toLowerCase().includes(search.toLowerCase()));
     return matchRisk && matchSearch;
-  });
+  }), [patients, riskFilter, search]);
 
   return (
     <div className="doctor-page doctor-patients page-enter">
@@ -54,7 +74,7 @@ export default function DoctorPatients() {
           <option>Sort by Name</option>
         </select>
       </div>
-      <p className="doctor-patients-count">{filtered.length} Patients</p>
+      <p className="doctor-patients-count">{loading ? 'Loading...' : `${filtered.length} Patients`}</p>
       <div className="dashboard-card doctor-patients-table-wrap">
         <table className="doctor-patients-table">
           <thead>
@@ -70,13 +90,13 @@ export default function DoctorPatients() {
           </thead>
           <tbody>
             {filtered.map((p) => (
-              <tr key={p.id}>
+              <tr key={p.patient_id}>
                 <td>
                   <div className="patient-cell">
-                    <span className="patient-cell-avatar">{p.initials}</span>
+                    <span className="patient-cell-avatar">{initialsFrom(p.name)}</span>
                     <div>
                       <strong>{p.name}</strong>
-                      <span className="patient-cell-meta">{p.age} years • {p.gender}</span>
+                      <span className="patient-cell-meta">{p.age} years</span>
                     </div>
                   </div>
                 </td>
@@ -88,17 +108,17 @@ export default function DoctorPatients() {
                     {p.conditions.length > 2 && <span className="condition-tag condition-tag-more">+{p.conditions.length - 2}</span>}
                   </div>
                 </td>
-                <td>{p.medications} medications</td>
+                <td>{p.medications.length} medications</td>
                 <td>
                   <span className={`risk-dot risk-dot-${p.risk}`} />
                   {p.risk.charAt(0).toUpperCase() + p.risk.slice(1)}
                 </td>
-                <td>{p.lastCheckIn}</td>
+                <td>{p.latest_assessment ? 'Recent' : 'No check-in yet'}</td>
                 <td>
                   <div className="adherence-cell">
-                    <span>{p.adherence}%</span>
+                    <span>{p.has_report ? 'Report ready' : 'No report'}</span>
                     <div className="adherence-bar-wrap">
-                      <div className={`adherence-bar adherence-bar-${p.risk}`} style={{ width: `${p.adherence}%` }} />
+                      <div className={`adherence-bar adherence-bar-${p.risk}`} style={{ width: p.has_report ? '100%' : '35%' }} />
                     </div>
                   </div>
                 </td>
