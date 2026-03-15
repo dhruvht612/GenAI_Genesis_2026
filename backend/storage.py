@@ -38,6 +38,7 @@ def initialize_db() -> None:
             """
         )
         _ensure_column(conn, "patients", "assigned_doctor_id", "TEXT")
+        _ensure_column(conn, "patients", "risk_score", "INTEGER")
 
         conn.execute(
             """
@@ -61,6 +62,18 @@ def initialize_db() -> None:
                 report_text TEXT NOT NULL,
                 urgency TEXT,
                 severity_score INTEGER,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS chat_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                patient_id TEXT NOT NULL,
+                role TEXT NOT NULL,
+                message TEXT NOT NULL,
                 created_at TEXT NOT NULL
             )
             """
@@ -273,8 +286,8 @@ def upsert_patient(record: PatientRecord) -> None:
                 medications_json=excluded.medications_json,
                 profiles_json=excluded.profiles_json,
                 created_at=excluded.created_at,
-                latest_report=excluded.latest_report,
-                latest_assessment_json=excluded.latest_assessment_json
+                latest_report=COALESCE(excluded.latest_report, patients.latest_report),
+                latest_assessment_json=COALESCE(excluded.latest_assessment_json, patients.latest_assessment_json)
             """,
             (
                 record.id,
@@ -455,6 +468,51 @@ def update_patient_medications(patient_id: str, medications: list[str]) -> bool:
     return True
 
 
+def add_chat_message(patient_id: str, role: str, message: str) -> None:
+    with _connect() as conn:
+        conn.execute(
+            "INSERT INTO chat_messages (patient_id, role, message, created_at) VALUES (?, ?, ?, ?)",
+            (patient_id, role, message, datetime.now(UTC).isoformat()),
+        )
+        conn.commit()
+
+
+def get_chat_history(patient_id: str, limit: int = 60) -> list[dict[str, Any]]:
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT role, message, created_at FROM chat_messages WHERE patient_id = ? ORDER BY id ASC LIMIT ?",
+            (patient_id, limit),
+        ).fetchall()
+    return [{"role": row["role"], "message": row["message"], "created_at": row["created_at"]} for row in rows]
+
+
+def update_latest_assessment(patient_id: str, assessment: dict) -> None:
+    with _connect() as conn:
+        conn.execute(
+            "UPDATE patients SET latest_assessment_json = ? WHERE id = ?",
+            (json.dumps(assessment), patient_id),
+        )
+        conn.commit()
+
+
+def get_patient_risk_score(patient_id: str) -> int | None:
+    with _connect() as conn:
+        row = conn.execute("SELECT risk_score FROM patients WHERE id = ?", (patient_id,)).fetchone()
+    if row and row["risk_score"] is not None:
+        return int(row["risk_score"])
+    return None
+
+
+def update_risk_score(patient_id: str, score: int) -> None:
+    with _connect() as conn:
+        # Only raise the score, never lower it (doctor must explicitly clear)
+        conn.execute(
+            "UPDATE patients SET risk_score = ? WHERE id = ? AND (risk_score IS NULL OR risk_score < ?)",
+            (score, patient_id, score),
+        )
+        conn.commit()
+
+
 def add_report_event(
     *,
     patient_id: str,
@@ -487,7 +545,7 @@ def list_patients_by_doctor(doctor_id: str) -> list[dict[str, Any]]:
     with _connect() as conn:
         rows = conn.execute(
             """
-            SELECT id, name, age, conditions_json, medications_json, latest_assessment_json, latest_report
+            SELECT id, name, age, conditions_json, medications_json, latest_assessment_json, latest_report, risk_score
             FROM patients
             WHERE assigned_doctor_id = ?
             ORDER BY name ASC
@@ -500,7 +558,13 @@ def list_patients_by_doctor(doctor_id: str) -> list[dict[str, Any]]:
         assessment = json.loads(row["latest_assessment_json"]) if row["latest_assessment_json"] else None
         conditions = json.loads(row["conditions_json"])
         medications = json.loads(row["medications_json"])
-        risk = (assessment or {}).get("urgency", "low")
+        severity = (assessment or {}).get("severity_score") or (row["risk_score"] or 0)
+        if severity >= 7:
+            risk = "high"
+        elif severity >= 4:
+            risk = "medium"
+        else:
+            risk = "low"
         output.append(
             {
                 "patient_id": row["id"],
@@ -509,6 +573,7 @@ def list_patients_by_doctor(doctor_id: str) -> list[dict[str, Any]]:
                 "conditions": conditions,
                 "medications": medications,
                 "risk": risk,
+                "risk_score": int(severity),
                 "latest_assessment": assessment,
                 "has_report": bool(row["latest_report"]),
             }

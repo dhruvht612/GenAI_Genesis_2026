@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import './DoctorReports.css';
 
 const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
@@ -12,6 +13,8 @@ const REPORT_TYPES = [
 ];
 
 export default function DoctorReports() {
+  const location = useLocation();
+  const incomingPatientId = location.state?.patientId || null;
   const [reports, setReports] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [reportType, setReportType] = useState('summary');
@@ -33,7 +36,10 @@ export default function DoctorReports() {
         if (!res.ok) throw new Error(data?.detail || 'Failed to load reports');
         const rows = data.reports || [];
         setReports(rows);
-        if (rows.length) setSelectedId(rows[0].report_id);
+        if (rows.length) {
+          const match = incomingPatientId && rows.find((r) => r.patient_id === incomingPatientId);
+          setSelectedId(match ? match.report_id : rows[0].report_id);
+        }
       } catch {
         setReports([]);
       } finally {

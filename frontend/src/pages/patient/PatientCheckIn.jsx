@@ -8,8 +8,8 @@ const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
 
 const now = () => new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
-const INITIAL_MESSAGES = [
-  { id: 1, from: 'ai', text: 'Hello Maria! 👋 How are you feeling today?', time: now() },
+const getInitialMessages = (name) => [
+  { id: 1, from: 'ai', text: `Hello ${name}! 👋 How are you feeling today?`, time: now() },
 ];
 
 const readSSE = async (response, onEvent) => {
@@ -51,7 +51,8 @@ const readSSE = async (response, onEvent) => {
 
 export default function PatientCheckIn() {
   const navigate = useNavigate();
-  const [messages, setMessages] = useState(INITIAL_MESSAGES);
+  const sessionName = sessionStorage.getItem('mediguard_displayName') || 'there';
+  const [messages, setMessages] = useState(() => getInitialMessages(sessionName.split(' ')[0]));
   const [input, setInput] = useState('');
   const [patientId, setPatientId] = useState('');
   const [status, setStatus] = useState('Connecting to backend...');
@@ -61,7 +62,6 @@ export default function PatientCheckIn() {
   const hasInitialized = useRef(false);
 
   const sessionUserId = sessionStorage.getItem('mediguard_user_id') || `PT-${Math.random().toString(36).slice(2, 8)}`;
-  const sessionName = sessionStorage.getItem('mediguard_displayName') || 'Patient';
   const assignedDoctorId = sessionStorage.getItem('mediguard_assigned_doctor_id') || 'DR-1001';
 
   const storedConditions = JSON.parse(localStorage.getItem('mediguard_conditions') || 'null') || ['Type 2 Diabetes'];
@@ -113,6 +113,32 @@ export default function PatientCheckIn() {
     setup();
   }, []);
 
+  // Load chat history once patientId is available
+  useEffect(() => {
+    if (!patientId) return;
+
+    const loadHistory = async () => {
+      try {
+        const res = await fetch(`${API}/chat/history/${patientId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const msgs = data.messages || [];
+        if (msgs.length === 0) return; // keep greeting
+        const historyMsgs = msgs.map((m) => ({
+          id: messageId.current++,
+          from: m.role === 'user' ? 'user' : 'ai',
+          text: m.message,
+          time: new Date(m.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+        }));
+        setMessages(historyMsgs);
+      } catch {
+        // keep current messages
+      }
+    };
+
+    loadHistory();
+  }, [patientId]);
+
   const handleSend = async (e) => {
     e.preventDefault();
     if (!input.trim() || loading) return;
@@ -148,7 +174,8 @@ export default function PatientCheckIn() {
 
         if (event.type === 'report_ready') {
           if (typeof event.content === 'string') {
-            localStorage.setItem('mediguard_latest_report', event.content);
+            const rKey = sessionStorage.getItem('mediguard_user_id');
+            localStorage.setItem(rKey ? `mediguard_latest_report_${rKey}` : 'mediguard_latest_report', event.content);
           }
           appendMessage('ai', 'Doctor report generated. Open the report tab to view it.');
         }

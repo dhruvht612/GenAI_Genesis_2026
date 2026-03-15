@@ -35,8 +35,10 @@
 }
 
 .nav-logo-icon {
-  color: var(--primary);
-  font-size: 1.25rem;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  display: block;
 }
 
 .nav-links {

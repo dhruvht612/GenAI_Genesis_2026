@@ -12,6 +12,7 @@ function getGreeting() {
 
 export default function PatientDashboardOverview() {
   const [overview, setOverview] = useState(null);
+  const [checkedMeds, setCheckedMeds] = useState({});
 
   useEffect(() => {
     const patientId = sessionStorage.getItem('mediguard_user_id');
@@ -35,14 +36,32 @@ export default function PatientDashboardOverview() {
     const meds = overview?.medication_plan || [];
     return meds.map((m) => {
       const parts = (m.name || '').split(' ');
+      const hasDosage = parts.length > 1;
       return {
-        name: parts.slice(0, -1).join(' ') || m.name,
-        dosage: parts.slice(-1).join(' '),
+        name: hasDosage ? parts.slice(0, -1).join(' ') : m.name,
+        dosage: hasDosage ? parts.at(-1) : '',
         time: m.time || 'N/A',
         completed: Boolean(m.completed),
       };
     });
   }, [overview]);
+
+  // Seed checkedMeds from API data once (only if not already set by user)
+  useEffect(() => {
+    if (!overview?.medication_plan) return;
+    setCheckedMeds((prev) => {
+      if (Object.keys(prev).length > 0) return prev; // already initialised
+      const initial = {};
+      overview.medication_plan.forEach((m, i) => { initial[i] = Boolean(m.completed); });
+      return initial;
+    });
+  }, [overview]);
+
+  const toggleMed = (i) => setCheckedMeds((prev) => ({ ...prev, [i]: !prev[i] }));
+
+  const riskScore = overview?.risk_score ?? null;
+  const riskLabel = riskScore === null ? null : riskScore >= 7 ? 'High Risk' : riskScore >= 4 ? 'Moderate' : 'Low Risk';
+  const riskColor = riskScore === null ? null : riskScore >= 7 ? '#ef4444' : riskScore >= 4 ? '#f59e0b' : '#10b981';
 
   const recentSymptoms = overview?.symptoms_log || [];
   const patientName = overview?.name || sessionStorage.getItem('mediguard_displayName') || 'Patient';
@@ -57,8 +76,12 @@ export default function PatientDashboardOverview() {
         <h1 className="patient-name">{patientName.split(' ')[0]}</h1>
         <div className="patient-health-card">
           <span className="patient-health-label">Overall Health Status</span>
-          <span className="patient-health-value">Excellent</span>
-          <span className="patient-health-icon" aria-hidden>📈</span>
+          <span className="patient-health-value" style={riskColor ? { color: riskColor } : {}}>
+            {riskLabel || 'No Assessment Yet'}
+          </span>
+          <span className="patient-health-icon" aria-hidden>
+            {riskScore === null ? '📋' : riskScore >= 7 ? '⚠️' : riskScore >= 4 ? '🟡' : '✅'}
+          </span>
         </div>
       </div>
       <div className="patient-two-col">
@@ -66,14 +89,24 @@ export default function PatientDashboardOverview() {
           <div className="patient-section-header">
             <h2 className="section-title">Today&apos;s Medications</h2>
             <span className="patient-med-progress">
-              {todaysMeds.filter((m) => m.completed).length}/{todaysMeds.length || 0} Completed
+              {todaysMeds.filter((_, i) => checkedMeds[i] ?? false).length}/{todaysMeds.length || 0} Completed
             </span>
           </div>
           <div className="dashboard-card patient-med-list">
-            {todaysMeds.map((med, i) => (
+            {todaysMeds.map((med, i) => {
+              const isChecked = checkedMeds[i] ?? med.completed;
+              return (
               <div key={i} className="patient-med-item">
-                <span className={`patient-med-check ${med.completed ? 'patient-med-check-done' : ''}`}>
-                  {med.completed ? '✓' : ''}
+                <span
+                  role="checkbox"
+                  aria-checked={isChecked}
+                  tabIndex={0}
+                  className={`patient-med-check ${isChecked ? 'patient-med-check-done' : ''}`}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => toggleMed(i)}
+                  onKeyDown={(e) => e.key === ' ' && toggleMed(i)}
+                >
+                  {isChecked ? '✓' : ''}
                 </span>
                 <div className="patient-med-details">
                   <strong>{med.name} {med.dosage}</strong>
@@ -81,7 +114,8 @@ export default function PatientDashboardOverview() {
                 </div>
                 <button type="button" className="patient-med-link" aria-label="View details">🔗</button>
               </div>
-            ))}
+              );
+            })}
             {todaysMeds.length === 0 && <p className="patient-symptoms-subtitle">No medications in profile yet.</p>}
           </div>
         </section>

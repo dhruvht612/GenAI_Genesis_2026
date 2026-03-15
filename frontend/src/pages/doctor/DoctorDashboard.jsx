@@ -63,7 +63,7 @@ export default function DoctorDashboard() {
         <div className="doctor-main">
           <header className="doctor-topbar">
             <div className="doctor-topbar-brand">
-              <span className="doctor-logo-icon">◆</span>
+              <img className="doctor-logo-icon" src="/medguard.png" alt="MediGuard logo" />
               <div>
                 <span className="doctor-brand">MediGuard</span>
                 <span className="doctor-portal-label">Doctor Portal</span>
@@ -84,3 +84,4 @@ export default function DoctorDashboard() {
     </div>
   );
 }
+

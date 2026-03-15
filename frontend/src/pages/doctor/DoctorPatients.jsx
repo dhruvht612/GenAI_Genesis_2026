@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './DoctorPatients.css';
 
 const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
@@ -6,6 +7,7 @@ const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
 const initialsFrom = (name = '') => name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
 
 export default function DoctorPatients() {
+  const navigate = useNavigate();
   const [riskFilter, setRiskFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [patients, setPatients] = useState([]);
@@ -32,6 +34,8 @@ export default function DoctorPatients() {
     };
 
     load();
+    const interval = setInterval(load, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const filtered = useMemo(() => patients.filter((p) => {
@@ -111,7 +115,8 @@ export default function DoctorPatients() {
                 <td>{p.medications.length} medications</td>
                 <td>
                   <span className={`risk-dot risk-dot-${p.risk}`} />
-                  {p.risk.charAt(0).toUpperCase() + p.risk.slice(1)}
+                  {p.risk === 'high' ? '⚠️ High Risk' : p.risk === 'medium' ? 'Moderate' : 'Low Risk'}
+                  {p.risk_score !== undefined && <span style={{ color: '#9ca3af', fontSize: '0.75rem', marginLeft: '4px' }}>({p.risk_score}/10)</span>}
                 </td>
                 <td>{p.latest_assessment ? 'Recent' : 'No check-in yet'}</td>
                 <td>
@@ -122,7 +127,7 @@ export default function DoctorPatients() {
                     </div>
                   </div>
                 </td>
-                <td><button type="button" className="row-arrow" aria-label="View">→</button></td>
+                <td><button type="button" className="row-arrow" aria-label="View" onClick={() => navigate('/doctor/reports', { state: { patientId: p.patient_id } })}>→</button></td>
               </tr>
             ))}
           </tbody>

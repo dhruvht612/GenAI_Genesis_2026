@@ -160,7 +160,7 @@ export default function Landing() {
 
       <footer className="landing-footer">
         <Link to="/" className="footer-logo">
-          <span className="nav-logo-icon">◆</span>
+          <img className="nav-logo-icon" src="/medguard.png" alt="MediGuard logo" />
           <span className="nav-logo-wordmark">MediGuard</span>
         </Link>
         <p className="footer-copy">© {new Date().getFullYear()} MediGuard. Built in 12 hours · Sun Life Hackathon</p>
@@ -171,3 +171,4 @@ export default function Landing() {
     </div>
   );
 }
+

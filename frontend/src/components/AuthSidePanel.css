@@ -18,8 +18,11 @@
 }
 
 .auth-logo-icon {
-  color: rgba(255,255,255,0.95);
-  font-size: 1.5rem;
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.18));
 }
 
 .auth-logo-wordmark {

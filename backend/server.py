@@ -17,8 +17,10 @@ from agent import (
 from storage import (
     authenticate_user,
     create_user,
+    get_chat_history,
     get_patient_metadata,
     get_patient,
+    get_patient_risk_score,
     get_user,
     initialize_db,
     list_patients_by_doctor,
@@ -144,6 +146,11 @@ async def chat(payload: ChatRequest) -> StreamingResponse:
     return StreamingResponse(stream, media_type="text/event-stream")
 
 
+@app.get("/chat/history/{patient_id}")
+def chat_history(patient_id: str) -> dict:
+    return {"patient_id": patient_id, "messages": get_chat_history(patient_id)}
+
+
 @app.post("/proactive-checkin/{patient_id}")
 async def proactive_checkin(patient_id: str) -> StreamingResponse:
     stream = proactive_checkin_stream(patient_id)
@@ -197,6 +204,9 @@ def patient_overview(patient_id: str) -> dict:
             for med in patient.medications
         ]
 
+    risk_score = get_patient_risk_score(patient_id)
+    if risk_score is None:
+        risk_score = (patient.latest_assessment or {}).get("severity_score")
     return {
         "patient_id": patient.id,
         "name": patient.name,
@@ -204,6 +214,7 @@ def patient_overview(patient_id: str) -> dict:
         "conditions": patient.conditions,
         "medications": patient.medications,
         "latest_assessment": patient.latest_assessment,
+        "risk_score": risk_score,
         "medication_plan": medication_plan,
         "symptoms_log": metadata.get("symptoms_log", []),
         "blood_type": metadata.get("blood_type"),

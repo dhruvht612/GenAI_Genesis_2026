@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 
 from mock_data import MOCK_MEDICATION_DB, MedicationProfile, PatientRecord
 from pharmacy_mcp_adapter import lookup_medication_profile
-from storage import add_report_event, get_patient, upsert_patient
+from storage import add_chat_message, add_report_event, get_patient, update_latest_assessment, update_risk_score, upsert_patient
 from tools import assess_symptoms, generate_doctor_report
 
 
@@ -307,6 +307,8 @@ def analyze_medication_case(
 
     patient.latest_assessment = assessment
     upsert_patient(patient)
+    update_latest_assessment(patient.id, assessment)
+    update_risk_score(patient.id, assessment["severity_score"])
 
     pharmacy_context = None
     if chosen_medication and source:
@@ -321,11 +323,12 @@ def analyze_medication_case(
     report_text: str | None = None
     should_generate = generate_report_now or compatibility == "high" or assessment.get("severity_score", 0) >= 7
     if should_generate:
+        med_display = [f"{p.name} {p.dosage}".strip() for p in patient.profiles] if patient.profiles else patient.medications
         report_text = generate_doctor_report(
             patient_name=patient.name,
             age=patient.age,
             conditions=patient.conditions,
-            medications=patient.medications,
+            medications=med_display,
             symptom_text=symptom_text,
             assessment=assessment,
         )
@@ -404,10 +407,15 @@ async def chat_stream(patient_id: str, user_message: str) -> AsyncIterator[str]:
         yield "data: [DONE]\n\n"
         return
 
+    add_chat_message(patient.id, "user", user_message)
+
     yield await _emit("tool_call", "assess_symptoms")
     assessment = assess_symptoms(user_text=user_message, medications=patient.medications)
     patient.latest_assessment = assessment
     upsert_patient(patient)
+    print(f"UPDATING ASSESSMENT: {assessment}")
+    update_latest_assessment(patient.id, assessment)
+    update_risk_score(patient.id, assessment["severity_score"])
 
     pharmacy_context: str | None = None
     mentioned_medication = _extract_medication_from_text(user_message, patient.medications)
@@ -427,6 +435,7 @@ async def chat_stream(patient_id: str, user_message: str) -> AsyncIterator[str]:
         assessment,
         pharmacy_context,
     )
+    add_chat_message(patient.id, "assistant", agent_response)
 
     for token in agent_response.split(" "):
         yield await _emit("token", token + " ")
@@ -438,14 +447,18 @@ async def chat_stream(patient_id: str, user_message: str) -> AsyncIterator[str]:
         user_message,
         assessment,
     )
+    # Hard rule: always generate report when severity >= 7, regardless of AI decision
+    if not should_report and assessment.get("severity_score", 0) >= 7:
+        should_report = True
 
     if should_report:
         yield await _emit("tool_call", "generate_doctor_report")
+        med_display = [f"{p.name} {p.dosage}".strip() for p in patient.profiles] if patient.profiles else patient.medications
         report = generate_doctor_report(
             patient_name=patient.name,
             age=patient.age,
             conditions=patient.conditions,
-            medications=patient.medications,
+            medications=med_display,
             symptom_text=user_message,
             assessment=assessment,
         )

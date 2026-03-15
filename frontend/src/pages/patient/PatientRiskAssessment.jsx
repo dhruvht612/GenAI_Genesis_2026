@@ -1,187 +1,135 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import './PatientRiskAssessment.css';
 
 const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
 
-export default function PatientRiskAssessment() {
-  const [validation, setValidation] = useState(null);
-  const [selectedMedication, setSelectedMedication] = useState('');
-  const [symptomText, setSymptomText] = useState('');
-  const [analysis, setAnalysis] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+function getRiskInfo(score) {
+  if (score === null || score === undefined) return { label: 'No Assessment Yet', color: '#6b7280', dot: '10%', bg: '#f3f4f6' };
+  if (score >= 7) return { label: 'High Risk', color: '#ef4444', dot: '85%', bg: '#fef2f2' };
+  if (score >= 4) return { label: 'Moderate', color: '#f59e0b', dot: '50%', bg: '#fffbeb' };
+  return { label: 'Low Risk', color: '#10b981', dot: '15%', bg: '#f0fdf4' };
+}
+
+export default function PatientRiskScore() {
+  const [overview, setOverview] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const patientId = sessionStorage.getItem('mediguard_user_id') || '';
 
   useEffect(() => {
-    if (!patientId) return;
+    if (!patientId) { setLoading(false); return; }
 
     const load = async () => {
       try {
-        const res = await fetch(`${API}/patient/${patientId}/medication-validation`);
+        const res = await fetch(`${API}/patient/${patientId}/overview?t=${Date.now()}`);
         const data = await res.json();
-        if (!res.ok) throw new Error(data?.detail || 'Failed to load medications');
-        setValidation(data);
-        if (data?.items?.[0]?.medication) {
-          setSelectedMedication(data.items[0].medication);
-        }
-      } catch (e) {
-        setError(e.message || 'Unable to load medication validation');
+        if (!res.ok) throw new Error(data?.detail || 'Failed to load overview');
+        setOverview(data);
+      } catch {
+        setOverview(null);
+      } finally {
+        setLoading(false);
       }
     };
 
     load();
-  }, [patientId]);
+  }, []);
 
-  const riskView = useMemo(() => {
-    const severity = analysis?.assessment?.severity_score || 0;
-    if (severity >= 7) return { label: 'High Risk', dot: '85%', color: '#ef4444' };
-    if (severity >= 4) return { label: 'Moderate Risk', dot: '50%', color: '#f59e0b' };
-    return { label: 'Low Risk', dot: '20%', color: '#10b981' };
-  }, [analysis]);
-
-  const recommendations = useMemo(() => {
-    const base = [
-      'Continue taking medications only as prescribed by your clinician.',
-      'Track symptom timing versus dose timing in this portal.',
-      'Escalate to in-person care if severe symptoms persist.',
-    ];
-    const matched = analysis?.matched_side_effects || [];
-    if (matched.length) {
-      return [
-        `Possible side-effect overlap found: ${matched.join(', ')}`,
-        ...base,
-      ];
-    }
-    return base;
-  }, [analysis]);
-
-  const handleAnalyze = async (e) => {
-    e.preventDefault();
-    if (!patientId || !symptomText.trim()) return;
-
-    setLoading(true);
-    setError('');
-    setAnalysis(null);
-    try {
-      const res = await fetch(`${API}/patient/${patientId}/medication-analysis`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          symptom_text: symptomText.trim(),
-          medication_name: selectedMedication || null,
-          generate_report: true,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.detail || 'Analysis failed');
-      setAnalysis(data);
-      if (data?.report) {
-        localStorage.setItem('mediguard_latest_report', data.report);
-      }
-    } catch (err) {
-      setError(err.message || 'Could not run analysis');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const riskScore = overview?.risk_score ?? null;
+  const assessment = overview?.latest_assessment || null;
+  const risk = getRiskInfo(riskScore);
 
   return (
     <div className="patient-page patient-risk page-enter">
       <div className="risk-header">
-        <span className="risk-header-icon">🧪</span>
-        <h1 className="risk-title">Medication AI Analysis</h1>
-        <p className="risk-subtitle">PharmacyMCP-verified medication checks against your symptoms</p>
+        <span className="risk-header-icon">📊</span>
+        <h1 className="risk-title">Risk Score</h1>
+        <p className="risk-subtitle">Your current health risk level based on the latest AI assessment</p>
       </div>
 
-      <div className="dashboard-card risk-form-card">
-        <form onSubmit={handleAnalyze} className="risk-analyze-form">
-          <label>
-            Medication
-            <select
-              className="form-input"
-              value={selectedMedication}
-              onChange={(e) => setSelectedMedication(e.target.value)}
-              disabled={loading}
-            >
-              {(validation?.items || []).map((item) => (
-                <option key={item.medication} value={item.medication}>{item.medication}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Symptom details
-            <textarea
-              className="form-input risk-textarea"
-              value={symptomText}
-              onChange={(e) => setSymptomText(e.target.value)}
-              placeholder="Example: I feel dizzy and nauseous about 1 hour after taking this medication"
-              disabled={loading}
-            />
-          </label>
-          <button type="submit" className="btn btn-risk-primary" disabled={loading || !symptomText.trim() || !selectedMedication}>
-            {loading ? 'Analyzing…' : 'Analyze + Generate Report'}
-          </button>
-        </form>
-        {error && <p className="risk-error-text">{error}</p>}
-      </div>
-
-      <div className="risk-grid">
-        <div className="dashboard-card risk-level-card">
-          <span className="risk-level-label">CURRENT RISK LEVEL</span>
-          <span className="risk-level-value" style={{ color: riskView.color }}>{riskView.label}</span>
-          <div className="risk-meter">
-            <div className="risk-meter-bar">
-              <span className="risk-meter-dot" style={{ left: riskView.dot }} />
-            </div>
-            <div className="risk-meter-labels">
-              <span>Low</span>
-              <span>Moderate</span>
-              <span>High</span>
+      {loading ? (
+        <div className="dashboard-card risk-form-card"><p className="risk-means-intro">Loading...</p></div>
+      ) : (
+        <div className="risk-grid">
+          <div className="dashboard-card risk-level-card" style={{ background: risk.bg }}>
+            <span className="risk-level-label">CURRENT RISK LEVEL</span>
+            <span className="risk-level-value" style={{ color: risk.color, fontSize: '2rem', fontWeight: 700 }}>
+              {risk.label}
+            </span>
+            {riskScore !== null && (
+              <p style={{ color: '#6b7280', margin: '0.25rem 0 0.75rem' }}>Severity score: {riskScore}/10</p>
+            )}
+            <div className="risk-meter">
+              <div className="risk-meter-bar">
+                <span className="risk-meter-dot" style={{ left: risk.dot, background: risk.color }} />
+              </div>
+              <div className="risk-meter-labels">
+                <span>Low</span>
+                <span>Moderate</span>
+                <span>High</span>
+              </div>
             </div>
           </div>
-          {analysis && (
-            <div className="risk-validation-summary">
-              <p>Medication checked: <strong>{analysis.medication || 'Unknown'}</strong></p>
-              <p>PharmacyMCP verified: <strong>{analysis.medication_verified_in_pharmacy_mcp ? 'Yes' : 'No'}</strong></p>
-              <p>Possible symptom link: <strong>{analysis.possible_symptom_link ? 'Yes' : 'No'}</strong></p>
+
+          <div className="risk-right">
+            <div className="dashboard-card risk-means-card">
+              <div className="risk-means-header">
+                <span className="risk-means-icon">🤖</span>
+                <h2>Latest Assessment</h2>
+              </div>
+              {assessment ? (
+                <>
+                  <p className="risk-ai-summary">
+                    <strong>Urgency:</strong> {assessment.urgency || 'unknown'}
+                  </p>
+                  {assessment.matched_medication && (
+                    <p className="risk-ai-summary">
+                      <strong>Linked medication:</strong> {assessment.matched_medication}
+                    </p>
+                  )}
+                  <ul className="risk-recommendations-list" style={{ marginTop: '0.5rem' }}>
+                    {(assessment.rationale || []).map((r, i) => (
+                      <li key={i}><span className="risk-check">•</span>{r}</li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p className="risk-ai-summary">
+                  No assessment yet. Go to <strong>AI Check-In</strong> and describe your symptoms to generate a risk score.
+                </p>
+              )}
             </div>
-          )}
+
+            <div className="dashboard-card risk-recommendations-card">
+              <h2>What to Do</h2>
+              <ul className="risk-recommendations-list">
+                {riskScore === null && (
+                  <li><span className="risk-check">→</span>Complete an AI Check-In to generate your risk score.</li>
+                )}
+                {riskScore !== null && riskScore >= 7 && (
+                  <>
+                    <li><span className="risk-check">⚠</span>Contact your doctor promptly — high severity detected.</li>
+                    <li><span className="risk-check">⚠</span>A doctor report has been automatically generated.</li>
+                    <li><span className="risk-check">✓</span>Monitor symptoms and seek in-person care if they worsen.</li>
+                  </>
+                )}
+                {riskScore !== null && riskScore >= 4 && riskScore < 7 && (
+                  <>
+                    <li><span className="risk-check">✓</span>Monitor your symptoms and continue medications as prescribed.</li>
+                    <li><span className="risk-check">✓</span>Check in again tomorrow using AI Check-In.</li>
+                  </>
+                )}
+                {riskScore !== null && riskScore < 4 && (
+                  <>
+                    <li><span className="risk-check">✅</span>Your risk level is low — keep up your medication routine.</li>
+                    <li><span className="risk-check">✓</span>Continue daily AI Check-Ins for ongoing monitoring.</li>
+                  </>
+                )}
+              </ul>
+            </div>
+          </div>
         </div>
-        <div className="risk-right">
-          <div className="dashboard-card risk-means-card">
-            <div className="risk-means-header">
-              <span className="risk-means-icon">ℹ</span>
-              <h2>What This Means</h2>
-            </div>
-            <p className="risk-means-intro">AI summary:</p>
-            <p className="risk-ai-summary">{analysis?.ai_summary || 'Run an analysis to get a medication-specific AI summary.'}</p>
-          </div>
-          <div className="dashboard-card risk-recommendations-card">
-            <h2>Recommendations</h2>
-            <ul className="risk-recommendations-list">
-              {recommendations.map((r, i) => (
-                <li key={i}>
-                  <span className="risk-check">✓</span>
-                  {r}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <div className="dashboard-card risk-validation-list">
-        <h2>Medication Validation Status</h2>
-        {(validation?.items || []).map((item) => (
-          <div key={item.medication} className="risk-validation-item">
-            <strong>{item.medication}</strong>
-            <span>{item.verified_in_pharmacy_mcp ? '✅ Verified by PharmacyMCP' : '⚠ Not verified in PharmacyMCP'}</span>
-            {item.side_effect_samples?.length > 0 && <span>Common side effects: {item.side_effect_samples.join(', ')}</span>}
-          </div>
-        ))}
-        {!validation?.items?.length && <p className="risk-means-intro">No medications found for this profile yet.</p>}
-      </div>
+      )}
     </div>
   );
 }

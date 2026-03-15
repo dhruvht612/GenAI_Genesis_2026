@@ -47,7 +47,7 @@ export default function Dashboard() {
         <div className="patient-portal">
           <aside className="patient-sidebar">
             <div className="patient-sidebar-brand">
-              <span className="patient-logo-icon">🏠</span>
+              <img className="patient-logo-icon" src="/medguard.png" alt="MediGuard logo" />
               <span className="patient-brand">MediGuard</span>
             </div>
             <nav className="patient-nav">
@@ -60,8 +60,8 @@ export default function Dashboard() {
                 AI Check-In
               </NavLink>
               <NavLink to="/dashboard/risk" className={({ isActive }) => `patient-nav-item ${isActive ? 'patient-nav-item-active' : ''}`}>
-                <span className="patient-nav-icon" aria-hidden>⚠</span>
-                Medication AI
+                <span className="patient-nav-icon" aria-hidden>📊</span>
+                Risk Score
               </NavLink>
               <NavLink to="/dashboard/report" className={({ isActive }) => `patient-nav-item ${isActive ? 'patient-nav-item-active' : ''}`}>
                 <span className="patient-nav-icon" aria-hidden>📄</span>
@@ -83,7 +83,7 @@ export default function Dashboard() {
           <div className="patient-main">
             <header className="patient-topbar">
               <div className="patient-topbar-brand">
-                <span className="patient-topbar-logo">◆</span>
+                <img className="patient-topbar-logo" src="/medguard.png" alt="MediGuard logo" />
                 <div>
                   <span className="patient-topbar-app">MediGuard</span>
                   <span className="patient-topbar-label">Patient Portal</span>
@@ -105,3 +105,4 @@ export default function Dashboard() {
     </div>
   );
 }
+

@@ -24,16 +24,17 @@ const SYMPTOMS_LOG = [
 const reportDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
 export default function PatientDoctorReport() {
-  const [latestReport, setLatestReport] = useState(localStorage.getItem('mediguard_latest_report') || '');
+  const patientId = sessionStorage.getItem('mediguard_user_id') || localStorage.getItem('mediguard_patient_id') || '';
+  const reportKey = patientId ? `mediguard_latest_report_${patientId}` : 'mediguard_latest_report';
+  const [latestReport, setLatestReport] = useState(patientId ? (localStorage.getItem(reportKey) || '') : '');
   const [patientProfile, setPatientProfile] = useState(null);
 
   useEffect(() => {
-    const patientId = sessionStorage.getItem('mediguard_user_id') || localStorage.getItem('mediguard_patient_id');
     if (!patientId) return;
 
     const fetchProfile = async () => {
       try {
-        const res = await fetch(`${API}/patient/${patientId}`);
+        const res = await fetch(`${API}/patient/${patientId}/overview`);
         if (!res.ok) return;
         const data = await res.json();
         setPatientProfile(data);
@@ -49,7 +50,7 @@ export default function PatientDoctorReport() {
         const data = await res.json();
         if (data?.report) {
           setLatestReport(data.report);
-          localStorage.setItem('mediguard_latest_report', data.report);
+          localStorage.setItem(reportKey, data.report);
         }
       } catch {
         // keep last cached report
@@ -58,13 +59,14 @@ export default function PatientDoctorReport() {
 
     fetchProfile();
     fetchReport();
-  }, []);
+  }, [patientId, reportKey]);
 
   const displayName = patientProfile?.name || sessionStorage.getItem('mediguard_displayName') || 'Patient';
   const displayId = patientProfile?.patient_id || sessionStorage.getItem('mediguard_user_id') || 'N/A';
   const displayAge = patientProfile?.age;
   const conditions = patientProfile?.conditions || [];
   const medications = patientProfile?.medications || [];
+  const medicationPlan = patientProfile?.medication_plan || [];
 
   return (
     <div className="patient-page patient-report page-enter">
@@ -95,7 +97,12 @@ export default function PatientDoctorReport() {
         </div>
         <div className="dashboard-card report-card report-adherence">
           <h3 className="report-card-title">💊 Medications Adherence</h3>
-          {(medications.length ? medications.map((m) => ({ name: m, pct: 100, detail: 'Active medication' })) : MEDS_ADHERENCE).map((m, i) => (
+          {(medicationPlan.length
+            ? medicationPlan.map((m) => ({ name: m.name, pct: 100, detail: m.time ? `Scheduled at ${m.time}` : 'Active medication' }))
+            : medications.length
+              ? medications.map((m) => ({ name: m, pct: 100, detail: 'Active medication' }))
+              : MEDS_ADHERENCE
+          ).map((m, i) => (
             <div key={i} className="report-adherence-item">
               <div className="report-adherence-header">
                 <span className="report-adherence-name">{m.name}</span>

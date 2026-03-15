@@ -14,7 +14,7 @@ export default function Nav() {
     <nav className="nav">
       <div className="nav-inner">
         <Link to="/" className="nav-logo">
-          <span className="nav-logo-icon" aria-hidden>◆</span>
+          <img className="nav-logo-icon" src="/medguard.png" alt="MediGuard logo" />
           <span className="nav-logo-wordmark">MediGuard</span>
         </Link>
         {!isAuthPage && (
@@ -45,3 +45,4 @@ export default function Nav() {
     </nav>
   );
 }
+
