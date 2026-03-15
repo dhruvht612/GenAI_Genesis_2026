@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 
 from mock_data import MOCK_MEDICATION_DB, PATIENTS, MedicationProfile, PatientRecord
 from pharmacy_mcp_adapter import lookup_medication_profile
-from storage import get_patient, upsert_patient
+from storage import get_patient, save_chat_message, upsert_patient
 from tools import assess_symptoms, generate_doctor_report
 
 
@@ -28,18 +28,52 @@ def _normalize_medication_name(name: str) -> str:
     return name.strip().lower()
 
 
-def _env_flag(name: str, default: bool = False) -> bool:
-    raw = os.getenv(name)
-    if raw is None:
-        return default
-    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+_MED_ADVICE: dict[str, dict] = {
+    "lisinopril": {
+        "what": ["Orthostatic hypotension (blood pressure drops on standing)", "Dehydration amplifying the effect"],
+        "actions": ["🧘 Rise slowly from sitting or lying down", "💧 Drink at least 8 glasses of water today", "🚶 Avoid standing for long periods", "🍽️ Take your medication with food"],
+        "intro": "Dizziness when standing is a known side effect of your Lisinopril — it can lower blood pressure too quickly when you change positions.",
+    },
+    "metformin": {
+        "what": ["GI irritation from Metformin (common at start)", "Medication timing relative to meals"],
+        "actions": ["🍽️ Always take Metformin with a full meal", "💧 Stay well hydrated throughout the day", "🕒 Split doses if prescribed twice daily", "📋 Note the timing and severity for your doctor"],
+        "intro": "Nausea and stomach upset are the most common side effects of Metformin, especially early on.",
+    },
+    "atorvastatin": {
+        "what": ["Statin-related myopathy (muscle breakdown)", "Exercise-induced soreness amplified by Atorvastatin"],
+        "actions": ["🛌 Rest the affected muscle group today", "💧 Stay hydrated to help flush metabolites", "🚫 Avoid strenuous exercise until symptoms ease", "📋 Log the severity — report if it worsens"],
+        "intro": "Muscle aches are a known side effect of your Atorvastatin — statins can occasionally affect muscle tissue.",
+    },
+}
+
+_DEFAULT_ADVICE = {
+    "what": ["A reaction related to one of your current medications", "An underlying condition that may need monitoring"],
+    "actions": ["📋 Note when symptoms started and how severe they are", "💧 Stay hydrated and rest", "🩺 Contact your care team if symptoms persist or worsen"],
+    "intro": "I've noted your symptoms and cross-referenced them with your current medications.",
+}
 
 
 def _rule_based_response(patient: PatientRecord, assessment: dict) -> str:
+    severity = assessment["severity_score"]
+    urgency = assessment["urgency"]
+    matched = (assessment.get("matched_medication") or "").lower()
+
+    advice = _MED_ADVICE.get(matched, _DEFAULT_ADVICE)
+    what_bullets = "\n".join(f"- {w}" for w in advice["what"])
+    action_bullets = "\n".join(f"- {a}" for a in advice["actions"])
+
+    if severity >= 7:
+        status = f"Status: ⚠️ Severity {severity}/10 — I've flagged this for your doctor. A full report has been generated for their review."
+    else:
+        status = f"Status: Severity {severity}/10 — {urgency.capitalize()} urgency. Monitor and let me know if anything changes."
+
     return (
-        f"Thanks {patient.name}. I assessed your symptoms as {assessment['urgency']} urgency "
-        f"(severity {assessment['severity_score']}/10). "
-        "If symptoms worsen, seek in-person medical care promptly."
+        f"Hi {patient.name}! 👋 {advice['intro']}\n\n"
+        f"**What this could be:**\n{what_bullets}\n\n"
+        f"**What to do right now:**\n{action_bullets}\n\n"
+        f"{status}\n\n"
+        "Let me know if anything gets worse! 🩺"
     )
 
 
@@ -67,18 +101,36 @@ def _gemini_response(
     except Exception:
         return None
 
+    severity = assessment.get("severity_score", 0)
+    urgency = assessment.get("urgency", "low")
+    matched_med = assessment.get("matched_medication") or "your medication"
+    flagged_note = (
+        f"Status: ⚠️ Severity {severity}/10 — I've flagged this for your doctor. A full report has been generated for their review."
+        if severity >= 7
+        else f"Status: Severity {severity}/10 — {urgency.capitalize()} urgency. Monitor and let me know if anything changes."
+    )
+
     prompt = (
-        "You are MediGuard, a concise health concierge for demo use. "
-        "Do not diagnose. Keep response under 70 words. "
+        f"You are MediGuard, a warm and knowledgeable health concierge. "
         f"Patient: {patient.name}, age {patient.age}. "
         f"Conditions: {', '.join(patient.conditions)}. "
-        f"Meds: {', '.join(patient.medications)}. "
-        f"User message: {user_message}. "
-        f"Assessment: urgency={assessment.get('urgency')}, "
-        f"severity={assessment.get('severity_score')}/10, "
-        f"matched_medication={assessment.get('matched_medication')}. "
+        f"Medications: {', '.join(patient.medications)}. "
         f"Pharmacy context: {pharmacy_context or 'none'}. "
-        "Provide supportive guidance and clear next step."
+        f"The patient said: \"{user_message}\". "
+        f"Triage result: urgency={urgency}, severity={severity}/10, matched medication={matched_med}. "
+        "Reply in this exact format with markdown:\n"
+        f"Hi {patient.name}! 👋 [One warm sentence acknowledging their symptom and linking it to {matched_med} if relevant.]\n\n"
+        "**What this could be:**\n"
+        "- [Condition 1]\n"
+        "- [Condition 2]\n\n"
+        "**What to do right now:**\n"
+        "- [Emoji] [Action 1]\n"
+        "- [Emoji] [Action 2]\n"
+        "- [Emoji] [Action 3]\n\n"
+        f"{flagged_note}\n\n"
+        "Let me know if anything gets worse! 🩺\n\n"
+        "Rules: Do not diagnose. Keep each bullet under 12 words. Use relevant emojis on action items. "
+        "Cross-reference the matched medication with its known side effects."
     )
 
     try:
@@ -87,7 +139,8 @@ def _gemini_response(
         text = getattr(response, "text", None)
         if text and text.strip():
             return text.strip()
-    except Exception:
+    except Exception as exc:
+        print(f"[MediGuard] Gemini call failed: {exc!r}")
         return None
 
     return None
@@ -99,21 +152,18 @@ async def _generate_agent_response(
     assessment: dict,
     pharmacy_context: str | None = None,
 ) -> str:
-    mock_mode = _env_flag("MOCK_MODE", default=True)
     provider = os.getenv("LLM_PROVIDER", "mock").strip().lower()
 
-    if mock_mode or provider != "gemini":
-        return _rule_based_response(patient, assessment)
-
-    gemini_text = await asyncio.to_thread(
-        _gemini_response,
-        patient,
-        user_message,
-        assessment,
-        pharmacy_context,
-    )
-    if gemini_text:
-        return gemini_text
+    if provider == "gemini":
+        gemini_text = await asyncio.to_thread(
+            _gemini_response,
+            patient,
+            user_message,
+            assessment,
+            pharmacy_context,
+        )
+        if gemini_text:
+            return gemini_text
 
     return _rule_based_response(patient, assessment)
 
@@ -197,6 +247,8 @@ async def chat_stream(patient_id: str, user_message: str) -> AsyncIterator[str]:
         yield "data: [DONE]\n\n"
         return
 
+    save_chat_message(patient_id, "user", user_message)
+
     yield await _emit("tool_call", "assess_symptoms")
     assessment = assess_symptoms(user_text=user_message, medications=patient.medications)
     patient.latest_assessment = assessment
@@ -220,6 +272,8 @@ async def chat_stream(patient_id: str, user_message: str) -> AsyncIterator[str]:
         assessment,
         pharmacy_context,
     )
+
+    save_chat_message(patient_id, "assistant", agent_response)
 
     for token in agent_response.split(" "):
         yield await _emit("token", token + " ")

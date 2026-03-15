@@ -30,6 +30,14 @@ def assess_symptoms(
             score = max(score, 8)
             rationale.append("Muscle symptoms reported with Atorvastatin in profile.")
 
+    if "threw up" in text or "vomit" in text or "throwing up" in text:
+        matched_medication = matched_medication or (
+            "Metformin" if any(m.lower() == "metformin" for m in medications) else None
+        )
+        urgency = "high"
+        score = max(score, 8)
+        rationale.append("Vomiting reported — elevated to high urgency regardless of medication match.")
+
     if "nausea" in text or "stomach" in text:
         if any(m.lower() == "metformin" for m in medications):
             matched_medication = matched_medication or "Metformin"

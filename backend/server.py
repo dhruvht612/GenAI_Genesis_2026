@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from agent import chat_stream, proactive_checkin_stream, setup_patient
 from mock_data import PATIENTS
-from storage import authenticate_user, create_user, get_patient, initialize_db
+from storage import authenticate_user, create_user, get_all_patients, get_chat_messages, get_patient, initialize_db
 
 initialize_db()
 
@@ -122,6 +122,55 @@ async def chat(payload: ChatRequest) -> StreamingResponse:
 async def proactive_checkin(patient_id: str) -> StreamingResponse:
     stream = proactive_checkin_stream(patient_id)
     return StreamingResponse(stream, media_type="text/event-stream")
+
+
+@app.get("/doctor/patients")
+def doctor_patients() -> list[dict]:
+    patients = get_all_patients()
+    return [
+        {
+            "patient_id": p.id,
+            "name": p.name,
+            "age": p.age,
+            "conditions": p.conditions,
+            "medications": p.medications,
+            "has_report": p.latest_report is not None,
+            "assessment": p.latest_assessment,
+        }
+        for p in patients
+    ]
+
+
+@app.get("/doctor/patient/{patient_id}")
+def doctor_patient_detail(patient_id: str) -> dict:
+    patient = get_patient(patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return {
+        "patient_id": patient.id,
+        "name": patient.name,
+        "age": patient.age,
+        "conditions": patient.conditions,
+        "medications": patient.medications,
+        "profiles": [
+            {
+                "name": p.name,
+                "dosage": p.dosage,
+                "schedule": p.schedule,
+                "side_effect_windows": p.side_effect_windows,
+                "common_side_effects": p.common_side_effects,
+            }
+            for p in patient.profiles
+        ],
+        "latest_report": patient.latest_report,
+        "assessment": patient.latest_assessment,
+        "created_at": patient.created_at.isoformat(),
+    }
+
+
+@app.get("/chat/history/{patient_id}")
+def chat_history(patient_id: str) -> list[dict]:
+    return get_chat_messages(patient_id)
 
 
 @app.get("/report/{patient_id}")

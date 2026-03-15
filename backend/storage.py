@@ -48,6 +48,18 @@ def initialize_db() -> None:
             """
         )
 
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS chat_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                patient_id TEXT NOT NULL,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                timestamp TEXT NOT NULL
+            )
+            """
+        )
+
         _seed_demo_user(
             conn,
             user_id="MJ-2024",
@@ -63,6 +75,14 @@ def initialize_db() -> None:
             email="dr.smith@demo.mediguard.ca",
             password="demo123",
             display_name="Dr. Smith",
+        )
+        _seed_demo_user(
+            conn,
+            user_id="DR-0001",
+            role="doctor",
+            email="doctor@mediguard.com",
+            password="demo1234",
+            display_name="Dr. Demo",
         )
         conn.commit()
 
@@ -208,6 +228,57 @@ def upsert_patient(record: PatientRecord) -> None:
             ),
         )
         conn.commit()
+
+
+def save_chat_message(patient_id: str, role: str, content: str) -> None:
+    with _connect() as conn:
+        conn.execute(
+            "INSERT INTO chat_messages (patient_id, role, content, timestamp) VALUES (?, ?, ?, ?)",
+            (patient_id, role, content, datetime.now().isoformat()),
+        )
+        conn.commit()
+
+
+def get_chat_messages(patient_id: str) -> list[dict]:
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT role, content, timestamp FROM chat_messages WHERE patient_id = ? ORDER BY id ASC",
+            (patient_id,),
+        ).fetchall()
+    return [{"role": row["role"], "content": row["content"], "timestamp": row["timestamp"]} for row in rows]
+
+
+def get_all_patients() -> list[PatientRecord]:
+    with _connect() as conn:
+        rows = conn.execute("SELECT * FROM patients ORDER BY created_at DESC").fetchall()
+
+    patients = []
+    for row in rows:
+        profiles_raw = json.loads(row["profiles_json"])
+        profiles = [
+            MedicationProfile(
+                name=p.get("name", "Unknown"),
+                dosage=p.get("dosage", "Unknown"),
+                schedule=p.get("schedule", "Unknown"),
+                side_effect_windows=p.get("side_effect_windows", {}),
+                common_side_effects=p.get("common_side_effects", []),
+            )
+            for p in profiles_raw
+        ]
+        patients.append(
+            PatientRecord(
+                id=row["id"],
+                name=row["name"],
+                age=int(row["age"]),
+                conditions=json.loads(row["conditions_json"]),
+                medications=json.loads(row["medications_json"]),
+                profiles=profiles,
+                created_at=datetime.fromisoformat(row["created_at"]),
+                latest_report=row["latest_report"],
+                latest_assessment=json.loads(row["latest_assessment_json"]) if row["latest_assessment_json"] else None,
+            )
+        )
+    return patients
 
 
 def get_patient(patient_id: str) -> PatientRecord | None:
