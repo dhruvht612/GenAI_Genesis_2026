@@ -241,7 +241,7 @@ export function TravelConnectSignIn({
                 transition={{ delay: 0.7, duration: 0.5 }}
                 className="text-3xl font-bold mb-2 text-center text-slate-800"
               >
-                MediGuard
+                MedGuard
               </motion.h2>
               <motion.p
                 initial={{ opacity: 0, y: -20 }}

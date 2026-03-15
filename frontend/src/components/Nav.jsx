@@ -15,7 +15,7 @@ export default function Nav() {
       <div className="nav-inner">
         <Link to="/" className="nav-logo">
           <span className="nav-logo-icon" aria-hidden>◆</span>
-          <span className="nav-logo-wordmark">MediGuard</span>
+          <span className="nav-logo-wordmark">MedGuard</span>
         </Link>
         {!isAuthPage && (
           <ul className="nav-links">

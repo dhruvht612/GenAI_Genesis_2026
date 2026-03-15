@@ -197,7 +197,7 @@ export function SignInCard2({ onSubmit, topContent, bottomContent, successMessag
                   transition={{ delay: 0.3 }}
                   className="text-white/60 text-xs"
                 >
-                  Sign in to continue to MediGuard
+                  Sign in to continue to MedGuard
                 </motion.p>
               </div>
 

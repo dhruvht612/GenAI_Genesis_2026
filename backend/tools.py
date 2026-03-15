@@ -74,7 +74,7 @@ def generate_doctor_report(
 ) -> str:
     """Generate a concise clinician-friendly summary."""
     lines = [
-        "MediGuard Clinical Symptom Summary",
+        "MedGuard Clinical Symptom Summary",
         "=" * 36,
         f"Patient: {patient_name}",
         f"Age: {age}",

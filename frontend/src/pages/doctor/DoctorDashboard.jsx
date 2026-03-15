@@ -76,7 +76,7 @@ export default function DoctorDashboard() {
             <div className="doctor-topbar-brand">
               <span className="doctor-logo-icon">◆</span>
               <div>
-                <span className="doctor-brand">MediGuard</span>
+                <span className="doctor-brand">MedGuard</span>
                 <span className="doctor-portal-label">Doctor Portal</span>
               </div>
             </div>

@@ -1,4 +1,4 @@
-# MediGuard Backend (Hackathon Scaffold)
+# MedGuard Backend (Hackathon Scaffold)
 
 ## Run
 
@@ -40,4 +40,4 @@ If key/model is missing or fails, backend automatically falls back to mock rule-
 
 - Current implementation uses mock medication data and rule-based tools.
 - You can switch to Gemini by env config with automatic fallback to mock mode.
-- Patient state is persisted to local SQLite at `backend/mediaguard.db`.
+- Patient state is persisted to local SQLite at `backend/medguard.db`. (If you had an existing `mediaguard.db`, rename it to `medguard.db` to keep your data.)

@@ -6,7 +6,7 @@ export default function AuthSidePanel() {
       <div className="auth-side-content">
         <div className="auth-side-logo">
           <span className="auth-logo-icon">◆</span>
-          <span className="auth-logo-wordmark">MediGuard</span>
+          <span className="auth-logo-wordmark">MedGuard</span>
         </div>
         <h2 className="auth-side-headline">Your health, proactively managed</h2>
         <ul className="auth-side-features">

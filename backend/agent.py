@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 
 from mock_data import MOCK_MEDICATION_DB, MedicationProfile, PatientRecord
 from pharmacy_mcp_adapter import lookup_medication_profile
-from storage import add_report_event, get_patient, upsert_patient
+from storage import add_activity_event, add_report_event, get_patient, upsert_patient
 from tools import assess_symptoms, generate_doctor_report
 
 
@@ -122,7 +122,7 @@ def _gemini_response(
         return None
 
     prompt = (
-        "You are MediGuard, a concise health concierge for demo use. "
+        "You are MedGuard, a concise health concierge for demo use. "
         "Do not diagnose. Keep response under 70 words. "
         f"Patient: {patient.name}, age {patient.age}. "
         f"Conditions: {', '.join(patient.conditions)}. "
@@ -337,6 +337,15 @@ def analyze_medication_case(
             urgency=assessment.get("urgency"),
             severity_score=assessment.get("severity_score"),
         )
+        doctor_id = patient.assigned_doctor_id or "DR-1001"
+        add_activity_event(
+            doctor_id=doctor_id,
+            patient_id=patient.id,
+            patient_name=patient.name,
+            event_type="report_generated",
+            message="AI doctor report generated from check-in",
+            priority=assessment.get("urgency", "medium"),
+        )
 
     return {
         "patient_id": patient.id,
@@ -450,6 +459,25 @@ async def chat_stream(patient_id: str, user_message: str) -> AsyncIterator[str]:
             urgency=assessment.get("urgency"),
             severity_score=assessment.get("severity_score"),
         )
+        doctor_id = patient.assigned_doctor_id or "DR-1001"
+        add_activity_event(
+            doctor_id=doctor_id,
+            patient_id=patient.id,
+            patient_name=patient.name,
+            event_type="report_generated",
+            message="AI doctor report generated from check-in",
+            priority=assessment.get("urgency", "high"),
+        )
         yield await _emit("report_ready", report)
+    else:
+        doctor_id = patient.assigned_doctor_id or "DR-1001"
+        add_activity_event(
+            doctor_id=doctor_id,
+            patient_id=patient.id,
+            patient_name=patient.name,
+            event_type="checkin_completed",
+            message="Completed symptom check-in",
+            priority=None,
+        )
 
     yield "data: [DONE]\n\n"

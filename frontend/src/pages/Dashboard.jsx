@@ -90,7 +90,7 @@ export default function Dashboard() {
           <aside className="patient-sidebar">
             <div className="patient-sidebar-brand">
               <span className="patient-logo-icon">🏠</span>
-              <span className="patient-brand">MediGuard</span>
+              <span className="patient-brand">MedGuard</span>
             </div>
             <nav className="patient-nav">
               <NavLink to="/dashboard" end className={({ isActive }) => `patient-nav-item ${isActive ? 'patient-nav-item-active' : ''}`}>
@@ -127,7 +127,7 @@ export default function Dashboard() {
               <div className="patient-topbar-brand">
                 <span className="patient-topbar-logo">◆</span>
                 <div>
-                  <span className="patient-topbar-app">MediGuard</span>
+                  <span className="patient-topbar-app">MedGuard</span>
                   <span className="patient-topbar-label">Patient Portal</span>
                 </div>
               </div>

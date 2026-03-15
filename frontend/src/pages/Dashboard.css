@@ -652,6 +652,18 @@
   color: var(--text-muted);
 }
 
+.doctor-overview-loading {
+  margin: 1.5rem 0;
+  color: var(--text-muted);
+}
+
+.doctor-overview-empty {
+  margin: 0;
+  padding: 1rem 1.25rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
 .doctor-metrics {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -817,6 +829,17 @@
 
 .activity-item:last-child {
   border-bottom: none;
+}
+
+.activity-item-empty {
+  color: var(--text-muted);
+}
+
+.activity-body .activity-patient {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
 }
 
 .activity-icon {

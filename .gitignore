@@ -14,7 +14,7 @@ venv/
 # Local databases
 *.db
 *.sqlite3
-!backend/mediaguard.db
+!backend/medguard.db
 
 # OS/editor
 .DS_Store

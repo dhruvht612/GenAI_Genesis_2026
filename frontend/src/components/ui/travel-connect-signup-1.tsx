@@ -233,7 +233,7 @@ export function TravelConnectSignUp({ onSubmit, errorMessage, isSubmitting = fal
                 transition={{ delay: 0.7, duration: 0.5 }}
                 className="text-3xl font-bold mb-2 text-center text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600"
               >
-                MediGuard
+                MedGuard
               </motion.h2>
               <motion.p
                 initial={{ opacity: 0, y: -20 }}
@@ -241,7 +241,7 @@ export function TravelConnectSignUp({ onSubmit, errorMessage, isSubmitting = fal
                 transition={{ delay: 0.8, duration: 0.5 }}
                 className="text-sm text-center text-gray-600 max-w-xs"
               >
-                Create your account and join MediGuard to manage your medications with your care team
+                Create your account and join MedGuard to manage your medications with your care team
               </motion.p>
             </div>
           </div>

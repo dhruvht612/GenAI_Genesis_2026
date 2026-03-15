@@ -28,7 +28,7 @@ export default function Landing() {
                 Your medications, <em>proactively</em> managed.
               </h1>
               <p className="hero-sub">
-                MediGuard reaches out to you at the exact moment side effects are likely — not after. Powered by agentic AI, built for Canadians.
+                MedGuard reaches out to you at the exact moment side effects are likely — not after. Powered by agentic AI, built for Canadians.
               </p>
               <div className="hero-ctas">
                 <button type="button" className="btn btn-primary" onClick={() => navigate('/signup')}>
@@ -132,7 +132,7 @@ export default function Landing() {
         <h2>What People Say</h2>
         <div className="testimonial-cards">
           <div className="testimonial-card">
-            <blockquote>&ldquo;I finally stopped forgetting to report my dizziness. MediGuard asked me at the right time.&rdquo;</blockquote>
+            <blockquote>&ldquo;I finally stopped forgetting to report my dizziness. MedGuard asked me at the right time.&rdquo;</blockquote>
             <cite>— Maria C., Toronto</cite>
           </div>
           <div className="testimonial-card">
@@ -161,9 +161,9 @@ export default function Landing() {
       <footer className="landing-footer">
         <Link to="/" className="footer-logo">
           <span className="nav-logo-icon">◆</span>
-          <span className="nav-logo-wordmark">MediGuard</span>
+          <span className="nav-logo-wordmark">MedGuard</span>
         </Link>
-        <p className="footer-copy">© {new Date().getFullYear()} MediGuard. Built in 12 hours · Sun Life Hackathon</p>
+        <p className="footer-copy">© {new Date().getFullYear()} MedGuard. Built in 12 hours · Sun Life Hackathon</p>
         <span className="footer-badge">Built in 12 hours · Sun Life Hackathon</span>
       </footer>
       </div>

@@ -15,8 +15,10 @@ from agent import (
     validate_patient_medications,
 )
 from storage import (
+    add_activity_event,
     authenticate_user,
     create_user,
+    get_doctor_overview,
     get_patient,
     get_patient_metadata,
     get_user,
@@ -29,7 +31,7 @@ from storage import (
 
 initialize_db()
 
-app = FastAPI(title="MediGuard Backend", version="0.1.0")
+app = FastAPI(title="MedGuard Backend", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -165,6 +167,15 @@ def setup(payload: SetupRequest) -> dict:
             medication_plan=existing.get("medication_plan") or [],
             symptoms_log=existing.get("symptoms_log") or [],
         )
+    doctor_id = record.assigned_doctor_id or "DR-1001"
+    add_activity_event(
+        doctor_id=doctor_id,
+        patient_id=record.id,
+        patient_name=record.name,
+        event_type="profile_created",
+        message="Created their account and profile",
+        priority=None,
+    )
     return {
         "patient_id": record.id,
         "name": record.name,
@@ -301,6 +312,14 @@ def doctor_reports(doctor_id: str) -> dict:
     if not user or user["role"] != "doctor":
         raise HTTPException(status_code=404, detail="Doctor not found")
     return {"doctor_id": doctor_id, "reports": list_reports_for_doctor(doctor_id)}
+
+
+@app.get("/doctor/{doctor_id}/overview")
+def doctor_overview(doctor_id: str) -> dict:
+    user = get_user(doctor_id)
+    if not user or user["role"] != "doctor":
+        raise HTTPException(status_code=404, detail="Doctor not found")
+    return get_doctor_overview(doctor_id)
 
 
 if __name__ == "__main__":

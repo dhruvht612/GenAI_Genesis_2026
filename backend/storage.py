@@ -4,13 +4,13 @@ import json
 import hashlib
 import secrets
 import sqlite3
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 from mock_data import MedicationProfile, PatientRecord
 
-DB_PATH = Path(__file__).resolve().parent / "mediaguard.db"
+DB_PATH = Path(__file__).resolve().parent / "medguard.db"
 
 
 def _connect() -> sqlite3.Connection:
@@ -82,11 +82,26 @@ def initialize_db() -> None:
             """
         )
 
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS activity_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                doctor_id TEXT NOT NULL,
+                patient_id TEXT NOT NULL,
+                patient_name TEXT NOT NULL,
+                event_type TEXT NOT NULL,
+                message TEXT NOT NULL,
+                priority TEXT,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+
         _seed_demo_user(
             conn,
             user_id="MJ-2024",
             role="patient",
-            email="maria.chen@demo.mediguard.ca",
+            email="maria.chen@demo.medguard.ca",
             password="demo123",
             display_name="Maria Chen",
         )
@@ -94,7 +109,7 @@ def initialize_db() -> None:
             conn,
             user_id="DR-1001",
             role="doctor",
-            email="dr.smith@demo.mediguard.ca",
+            email="dr.smith@demo.medguard.ca",
             password="demo123",
             display_name="Dr. Smith",
         )
@@ -102,7 +117,7 @@ def initialize_db() -> None:
             conn,
             user_id="PT-JK2025",
             role="patient",
-            email="james.kim@demo.mediguard.ca",
+            email="james.kim@demo.medguard.ca",
             password="demo123",
             display_name="James Kim",
         )
@@ -110,7 +125,7 @@ def initialize_db() -> None:
             conn,
             user_id="PT-SL2026",
             role="patient",
-            email="sarah.lopez@demo.mediguard.ca",
+            email="sarah.lopez@demo.medguard.ca",
             password="demo123",
             display_name="Sarah Lopez",
         )
@@ -118,7 +133,7 @@ def initialize_db() -> None:
             conn,
             user_id="PT-DP2027",
             role="patient",
-            email="david.park@demo.mediguard.ca",
+            email="david.park@demo.medguard.ca",
             password="demo123",
             display_name="David Park",
         )
@@ -126,7 +141,7 @@ def initialize_db() -> None:
             conn,
             user_id="PT-EW2028",
             role="patient",
-            email="emily.watson@demo.mediguard.ca",
+            email="emily.watson@demo.medguard.ca",
             password="demo123",
             display_name="Emily Watson",
         )
@@ -134,9 +149,41 @@ def initialize_db() -> None:
             conn,
             user_id="PT-RS2029",
             role="patient",
-            email="robert.singh@demo.mediguard.ca",
+            email="robert.singh@demo.medguard.ca",
             password="demo123",
             display_name="Robert Singh",
+        )
+        _seed_demo_user(
+            conn,
+            user_id="PT-SJ2030",
+            role="patient",
+            email="sarah.johnson@demo.medguard.ca",
+            password="demo123",
+            display_name="Sarah Johnson",
+        )
+        _seed_demo_user(
+            conn,
+            user_id="PT-JW2031",
+            role="patient",
+            email="james.wilson@demo.medguard.ca",
+            password="demo123",
+            display_name="James Wilson",
+        )
+        _seed_demo_user(
+            conn,
+            user_id="PT-MC2032",
+            role="patient",
+            email="michael.chen@demo.medguard.ca",
+            password="demo123",
+            display_name="Michael Chen",
+        )
+        _seed_demo_user(
+            conn,
+            user_id="PT-LA2033",
+            role="patient",
+            email="lisa.anderson@demo.medguard.ca",
+            password="demo123",
+            display_name="Lisa Anderson",
         )
         conn.commit()
 
@@ -214,18 +261,42 @@ def _seed_demo_patient_metadata() -> None:
         date_of_birth="1985-01-15",
         blood_type="O-",
         allergies=["Penicillin"],
-        contact={"email": "maria.chen@demo.mediguard.ca", "phone": "+1 (555) 123-4567"},
+        contact={"email": "maria.chen@demo.medguard.ca", "phone": "+1 (555) 123-4567"},
         location="Toronto, ON",
         medication_plan=demo_medication_plan,
         symptoms_log=symptoms,
     )
 
-    # Seed patient profiles so the doctor dashboard shows multiple patients (name, conditions, medications)
-    def _seed_patient(patient_id: str, name: str, age: int, conditions: list[str], medications: list[str]) -> None:
+    # Seed patient profiles; optional risk ("high"/"medium") and mock_report for dashboard demo
+    _MOCK_REPORT = (
+        "MEDGUARD AI DOCTOR REPORT\n"
+        "Patient presented with symptoms requiring follow-up. Assessment indicates medication adherence "
+        "and symptom monitoring are recommended. Consider follow-up visit if symptoms persist.\n"
+        "— Auto-generated for demo"
+    )
+    _MOCK_REPORT_HIGH = (
+        "MEDGUARD AI DOCTOR REPORT — HIGH PRIORITY\n"
+        "Patient reported severe headache and dizziness. Possible interaction with current medications. "
+        "Recommend clinical review and consider dose adjustment. Patient advised to seek care if worsening.\n"
+        "— Auto-generated for demo"
+    )
+
+    def _seed_patient(
+        patient_id: str,
+        name: str,
+        age: int,
+        conditions: list[str],
+        medications: list[str],
+        risk: str | None = None,
+        mock_report: str | None = None,
+    ) -> None:
         profiles = [
             MedicationProfile(name=m, dosage="", schedule="", side_effect_windows={}, common_side_effects=[])
             for m in medications
         ]
+        assessment = None
+        if risk in ("high", "medium"):
+            assessment = {"urgency": risk, "severity_score": 8 if risk == "high" else 5}
         record = PatientRecord(
             id=patient_id,
             name=name,
@@ -235,6 +306,8 @@ def _seed_demo_patient_metadata() -> None:
             medications=medications,
             profiles=profiles,
             created_at=datetime.now(UTC),
+            latest_report=mock_report,
+            latest_assessment=assessment,
         )
         upsert_patient(record)
 
@@ -251,6 +324,8 @@ def _seed_demo_patient_metadata() -> None:
         52,
         ["Asthma", "Seasonal Allergies"],
         ["Albuterol inhaler", "Montelukast 10mg", "Fluticasone nasal spray"],
+        risk="medium",
+        mock_report=_MOCK_REPORT,
     )
     _seed_patient(
         "PT-SL2026",
@@ -258,6 +333,8 @@ def _seed_demo_patient_metadata() -> None:
         61,
         ["COPD", "Hypertension"],
         ["Spiriva 18mcg", "Advair 250/50", "Amlodipine 5mg"],
+        risk="high",
+        mock_report=_MOCK_REPORT_HIGH,
     )
     _seed_patient(
         "PT-DP2027",
@@ -265,6 +342,8 @@ def _seed_demo_patient_metadata() -> None:
         68,
         ["Heart Disease", "Atrial Fibrillation", "High Cholesterol"],
         ["Lisinopril 20mg", "Metoprolol 50mg", "Atorvastatin 40mg", "Aspirin 81mg"],
+        risk="high",
+        mock_report=_MOCK_REPORT_HIGH,
     )
     _seed_patient(
         "PT-EW2028",
@@ -279,7 +358,71 @@ def _seed_demo_patient_metadata() -> None:
         55,
         ["Hypertension", "High Cholesterol"],
         ["Amlodipine 10mg", "Atorvastatin 20mg", "Lisinopril 10mg"],
+        risk="medium",
+        mock_report=_MOCK_REPORT,
     )
+    _seed_patient(
+        "PT-SJ2030",
+        "Sarah Johnson",
+        45,
+        ["Hypertension", "Type 2 Diabetes"],
+        ["Lisinopril 10mg", "Metformin 500mg", "Warfarin 5mg"],
+        risk="high",
+        mock_report=_MOCK_REPORT_HIGH,
+    )
+    _seed_patient(
+        "PT-JW2031",
+        "James Wilson",
+        71,
+        ["Heart Failure", "Atrial Fibrillation", "Hypertension"],
+        ["Metoprolol 50mg", "Warfarin 5mg", "Lisinopril 20mg"],
+        risk="high",
+        mock_report=_MOCK_REPORT_HIGH,
+    )
+    _seed_patient(
+        "PT-MC2032",
+        "Michael Chen",
+        58,
+        ["Type 2 Diabetes", "Hypertension"],
+        ["Metformin 1000mg", "Amlodipine 5mg"],
+        risk="medium",
+        mock_report=_MOCK_REPORT,
+    )
+    _seed_patient(
+        "PT-LA2033",
+        "Lisa Anderson",
+        49,
+        ["Asthma", "Anxiety"],
+        ["Albuterol inhaler", "Sertraline 50mg"],
+    )
+
+    # Seed report_events and activity_events once so Reports tab and Recent Activity show mock data
+    with _connect() as conn:
+        existing = conn.execute("SELECT 1 FROM report_events LIMIT 1").fetchone()
+    if not existing:
+        for pid, pname, report_text, urgency in [
+            ("PT-JK2025", "James Kim", _MOCK_REPORT, "medium"),
+            ("PT-SL2026", "Sarah Lopez", _MOCK_REPORT_HIGH, "high"),
+            ("PT-DP2027", "David Park", _MOCK_REPORT_HIGH, "high"),
+            ("PT-RS2029", "Robert Singh", _MOCK_REPORT, "medium"),
+            ("PT-SJ2030", "Sarah Johnson", _MOCK_REPORT_HIGH, "high"),
+            ("PT-JW2031", "James Wilson", _MOCK_REPORT_HIGH, "high"),
+            ("PT-MC2032", "Michael Chen", _MOCK_REPORT, "medium"),
+        ]:
+            add_report_event(
+                patient_id=pid,
+                report_text=report_text,
+                urgency=urgency,
+                severity_score=8 if urgency == "high" else 5,
+            )
+            add_activity_event(
+                doctor_id="DR-1001",
+                patient_id=pid,
+                patient_name=pname,
+                event_type="report_generated",
+                message="AI doctor report generated from check-in",
+                priority=urgency,
+            )
 
 
 def create_user(
@@ -653,3 +796,68 @@ def list_reports_for_doctor(doctor_id: str) -> list[dict[str, Any]]:
         }
         for row in rows
     ]
+
+
+def add_activity_event(
+    *,
+    doctor_id: str,
+    patient_id: str,
+    patient_name: str,
+    event_type: str,
+    message: str,
+    priority: str | None = None,
+) -> None:
+    with _connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO activity_events (doctor_id, patient_id, patient_name, event_type, message, priority, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (doctor_id, patient_id, patient_name, event_type, message, priority, datetime.now(UTC).isoformat()),
+        )
+        conn.commit()
+
+
+def get_doctor_overview(doctor_id: str) -> dict[str, Any]:
+    patients = list_patients_by_doctor(doctor_id)
+    reports = list_reports_for_doctor(doctor_id)
+    now = datetime.now(UTC)
+    one_day_ago = (now - timedelta(days=1)).isoformat()
+    recent_reports = [r for r in reports if r["created_at"] and r["created_at"] >= one_day_ago]
+    high_risk = [p for p in patients if (p.get("risk") or "low") == "high"]
+    total = len(patients)
+    adherence_pct = 82
+    if total > 0:
+        with_reports = sum(1 for p in patients if p.get("has_report"))
+        adherence_pct = min(95, 70 + (with_reports * 25 // max(total, 1)))
+    with _connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, patient_id, patient_name, event_type, message, priority, created_at
+            FROM activity_events
+            WHERE doctor_id = ?
+            ORDER BY created_at DESC
+            LIMIT 30
+            """,
+            (doctor_id,),
+        ).fetchall()
+    activities = [
+        {
+            "id": row["id"],
+            "patient_id": row["patient_id"],
+            "patient_name": row["patient_name"],
+            "event_type": row["event_type"],
+            "message": row["message"],
+            "priority": row["priority"],
+            "created_at": row["created_at"],
+        }
+        for row in rows
+    ]
+    return {
+        "total_patients": total,
+        "high_risk_count": len(high_risk),
+        "recent_reports_24h": len(recent_reports),
+        "avg_adherence": adherence_pct,
+        "high_risk_patients": high_risk[:10],
+        "recent_activity": activities,
+    }
