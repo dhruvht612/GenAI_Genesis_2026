@@ -25,6 +25,14 @@ const reportDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
 
 export default function PatientDoctorReport() {
   const [latestReport, setLatestReport] = useState(localStorage.getItem('mediguard_latest_report') || '');
+  const displayName = sessionStorage.getItem('mediguard_displayName') || 'Patient';
+  const userId = sessionStorage.getItem('mediguard_user_id') || 'N/A';
+  const avatar = displayName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || '')
+    .join('') || 'PT';
 
   useEffect(() => {
     const patientId = localStorage.getItem('mediguard_patient_id');
@@ -68,9 +76,9 @@ export default function PatientDoctorReport() {
       </div>
       <div className="report-grid">
         <div className="dashboard-card report-card report-patient-info">
-          <span className="report-avatar">MJ</span>
-          <h3>Maria Johnson</h3>
-          <p className="report-meta">Patient ID: #MJ-2004</p>
+          <span className="report-avatar">{avatar}</span>
+          <h3>{displayName}</h3>
+          <p className="report-meta">Patient ID: #{userId}</p>
           <p className="report-meta"><strong>DATE OF BIRTH</strong><br />January 15, 1985</p>
           <p className="report-meta"><strong>REPORT PERIOD</strong><br />Last 7 Days</p>
         </div>

@@ -47,23 +47,6 @@ def initialize_db() -> None:
             )
             """
         )
-
-        _seed_demo_user(
-            conn,
-            user_id="MJ-2024",
-            role="patient",
-            email="maria.chen@demo.mediguard.ca",
-            password="demo123",
-            display_name="Maria",
-        )
-        _seed_demo_user(
-            conn,
-            user_id="DR-1001",
-            role="doctor",
-            email="dr.smith@demo.mediguard.ca",
-            password="demo123",
-            display_name="Dr. Smith",
-        )
         conn.commit()
 
 
@@ -83,35 +66,6 @@ def _verify_password(password: str, stored_hash: str) -> bool:
     except ValueError:
         return False
     return _hash_password(password, salt) == digest
-
-
-def _seed_demo_user(
-    conn: sqlite3.Connection,
-    *,
-    user_id: str,
-    role: str,
-    email: str,
-    password: str,
-    display_name: str,
-) -> None:
-    existing = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
-    if existing:
-        return
-
-    conn.execute(
-        """
-        INSERT INTO users (id, role, email, password_hash, display_name, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-        """,
-        (
-            user_id,
-            role,
-            email.lower(),
-            _build_password_hash(password),
-            display_name,
-            datetime.now().isoformat(),
-        ),
-    )
 
 
 def create_user(

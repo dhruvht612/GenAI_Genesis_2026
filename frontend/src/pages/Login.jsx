@@ -6,17 +6,6 @@ import './Auth.css';
 
 const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
 
-const DEMO_PATIENT = {
-  role: 'patient',
-  email: 'maria.chen@demo.mediguard.ca',
-  password: 'demo123',
-};
-const DEMO_DOCTOR = {
-  role: 'doctor',
-  email: 'dr.smith@demo.mediguard.ca',
-  password: 'demo123',
-};
-
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -67,13 +56,6 @@ export default function Login() {
   const handleSubmit = (e) => {
     e.preventDefault();
     performLogin(role, email, password);
-  };
-
-  const handleDemoLogin = (demo) => {
-    setRole(demo.role);
-    setEmail(demo.email);
-    setPassword(demo.password);
-    performLogin(demo.role, demo.email, demo.password);
   };
 
   return (
@@ -127,23 +109,6 @@ export default function Login() {
               >
                 {loading ? 'Logging in...' : 'Log in'}
               </button>
-              <div className="demo-buttons">
-                <span className="demo-label">Try demo:</span>
-                <button
-                  type="button"
-                  className="demo-btn demo-btn-patient"
-                  onClick={() => handleDemoLogin(DEMO_PATIENT)}
-                >
-                  Demo Patient
-                </button>
-                <button
-                  type="button"
-                  className="demo-btn demo-btn-doctor"
-                  onClick={() => handleDemoLogin(DEMO_DOCTOR)}
-                >
-                  Demo Doctor
-                </button>
-              </div>
             </form>
             <p className="auth-switch">
               Don&apos;t have an account? <Link to="/signup">Sign up</Link>

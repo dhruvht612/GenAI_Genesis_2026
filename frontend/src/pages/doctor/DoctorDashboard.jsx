@@ -6,6 +6,24 @@ export default function DoctorDashboard() {
   const navigate = useNavigate();
   const role = sessionStorage.getItem('mediguard_role');
   const email = sessionStorage.getItem('mediguard_email');
+  const displayName = sessionStorage.getItem('mediguard_displayName') || 'Doctor';
+
+  const initials = displayName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || '')
+    .join('') || 'DR';
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('mediguard_role');
+    sessionStorage.removeItem('mediguard_email');
+    sessionStorage.removeItem('mediguard_user_id');
+    sessionStorage.removeItem('mediguard_displayName');
+    localStorage.removeItem('mediguard_patient_id');
+    localStorage.removeItem('mediguard_latest_report');
+    navigate('/login', { replace: true });
+  };
 
   useEffect(() => {
     if (role !== 'doctor' || !email) {
@@ -43,10 +61,10 @@ export default function DoctorDashboard() {
               Settings
             </a>
             <div className="doctor-profile">
-              <span className="doctor-avatar">DR</span>
+              <span className="doctor-avatar">{initials}</span>
               <div className="doctor-profile-info">
-                <span className="doctor-name">Dr. Smith</span>
-                <button type="button" className="doctor-logout-link" onClick={() => navigate('/login')}>Log out</button>
+                <span className="doctor-name">{displayName}</span>
+                <button type="button" className="doctor-logout-link" onClick={handleLogout}>Log out</button>
               </div>
             </div>
           </div>

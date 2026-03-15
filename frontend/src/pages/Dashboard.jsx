@@ -7,8 +7,27 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const stateRole = location.state?.role;
   const stateEmail = location.state?.email;
-  const role = stateRole || sessionStorage.getItem('mediguard_role') || 'patient';
+  const role = stateRole || sessionStorage.getItem('mediguard_role') || '';
   const email = stateEmail || sessionStorage.getItem('mediguard_email') || '';
+  const displayName = sessionStorage.getItem('mediguard_displayName') || 'Patient';
+  const userId = sessionStorage.getItem('mediguard_user_id') || '';
+
+  const initials = displayName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || '')
+    .join('') || 'PT';
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('mediguard_role');
+    sessionStorage.removeItem('mediguard_email');
+    sessionStorage.removeItem('mediguard_user_id');
+    sessionStorage.removeItem('mediguard_displayName');
+    localStorage.removeItem('mediguard_patient_id');
+    localStorage.removeItem('mediguard_latest_report');
+    navigate('/login', { replace: true });
+  };
 
   useEffect(() => {
     if (stateRole) sessionStorage.setItem('mediguard_role', stateRole);
@@ -61,10 +80,10 @@ export default function Dashboard() {
               </NavLink>
             </nav>
             <div className="patient-sidebar-footer">
-              <span className="patient-avatar">MJ</span>
+              <span className="patient-avatar">{initials}</span>
               <div className="patient-profile-info">
-                <span className="patient-profile-name">Maria Johnson</span>
-                <span className="patient-id">Patient ID: #MJ-2024</span>
+                <span className="patient-profile-name">{displayName}</span>
+                <span className="patient-id">Patient ID: #{userId || 'N/A'}</span>
               </div>
             </div>
           </aside>
@@ -79,7 +98,7 @@ export default function Dashboard() {
               </div>
               <div className="patient-topbar-actions">
                 <button type="button" className="patient-topbar-btn" aria-label="Notifications">🔔</button>
-                <button type="button" className="patient-topbar-btn patient-topbar-logout" onClick={() => navigate('/login')}>
+                <button type="button" className="patient-topbar-btn patient-topbar-logout" onClick={handleLogout}>
                   Log out
                 </button>
               </div>
