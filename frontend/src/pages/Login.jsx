@@ -7,8 +7,8 @@ import './Auth.css';
 
 const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
 
-const DEMO_PATIENT = { role: 'patient', email: 'patient@demo.com', password: 'demo123' };
-const DEMO_DOCTOR = { role: 'doctor', email: 'doctor@demo.com', password: 'demo123' };
+const DEMO_PATIENT = { role: 'patient', email: 'maria.chen@demo.mediguard.ca', password: 'demo123', label: 'Demo Patient' };
+const DEMO_DOCTOR = { role: 'doctor', email: 'dr.smith@demo.mediguard.ca', password: 'demo123', label: 'Demo Doctor' };
 
 export default function Login() {
   const navigate = useNavigate();
@@ -88,6 +88,7 @@ export default function Login() {
   };
 
   const handleDemoLogin = (demo) => {
+    setRole(demo.role);
     performLogin(demo.role, demo.email, demo.password);
   };
 
