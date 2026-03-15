@@ -3,6 +3,15 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 
+def _has_medication(medications: list[str], target: str) -> bool:
+    target_l = target.lower()
+    for med in medications:
+        med_l = med.lower()
+        if med_l == target_l or med_l.startswith(f"{target_l} "):
+            return True
+    return False
+
+
 def assess_symptoms(
     *,
     user_text: str,
@@ -29,14 +38,14 @@ def assess_symptoms(
             rationale.append("Orthostatic dizziness reported with Lisinopril in profile.")
 
     if "muscle" in text or "ache" in text:
-        if any(m.lower() == "atorvastatin" for m in medications):
+        if _has_medication(medications, "atorvastatin"):
             matched_medication = "Atorvastatin"
             urgency = "high"
             score = max(score, 8)
             rationale.append("Muscle symptoms reported with Atorvastatin in profile.")
 
     if "nausea" in text or "stomach" in text:
-        if any(m.lower() == "metformin" for m in medications):
+        if _has_medication(medications, "metformin"):
             matched_medication = matched_medication or "Metformin"
             urgency = "medium" if urgency == "low" else urgency
             score = max(score, 5)

@@ -103,7 +103,7 @@ export default function Dashboard() {
               </NavLink>
               <NavLink to="/dashboard/risk" className={({ isActive }) => `patient-nav-item ${isActive ? 'patient-nav-item-active' : ''}`}>
                 <span className="patient-nav-icon" aria-hidden>⚠</span>
-                Risk Assessment
+                Medication AI
               </NavLink>
               <NavLink to="/dashboard/report" className={({ isActive }) => `patient-nav-item ${isActive ? 'patient-nav-item-active' : ''}`}>
                 <span className="patient-nav-icon" aria-hidden>📄</span>

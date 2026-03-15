@@ -30,6 +30,9 @@ export default function Login() {
     sessionStorage.setItem('mediguard_email', em);
     sessionStorage.setItem('mediguard_user_id', userId);
     sessionStorage.setItem('mediguard_displayName', displayName);
+    if (r === 'patient') {
+      sessionStorage.setItem('mediguard_assigned_doctor_id', 'DR-1001');
+    }
   };
 
   const performLogin = async (selectedRole, selectedEmail, selectedPassword) => {

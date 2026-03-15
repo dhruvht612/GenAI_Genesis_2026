@@ -7,9 +7,24 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from agent import chat_stream, proactive_checkin_stream, setup_patient
-from mock_data import PATIENTS
-from storage import authenticate_user, create_user, get_patient, initialize_db
+from agent import (
+    analyze_medication_case,
+    chat_stream,
+    proactive_checkin_stream,
+    setup_patient,
+    validate_patient_medications,
+)
+from storage import (
+    authenticate_user,
+    create_user,
+    get_patient_metadata,
+    get_patient,
+    get_user,
+    initialize_db,
+    list_patients_by_doctor,
+    list_reports_for_doctor,
+    update_patient_medications,
+)
 
 initialize_db()
 
@@ -26,6 +41,7 @@ app.add_middleware(
 
 class SetupRequest(BaseModel):
     user_id: str | None = Field(default=None, examples=["MJ-2024"])
+    assigned_doctor_id: str | None = Field(default="DR-1001", examples=["DR-1001"])
     name: str = Field(..., examples=["Maria Chen"])
     age: int = Field(..., ge=0, le=120)
     conditions: list[str] = Field(default_factory=list)
@@ -49,6 +65,16 @@ class LoginRequest(BaseModel):
     role: str = Field(..., examples=["patient", "doctor"])
     email: str
     password: str
+
+
+class PatientMedicationsRequest(BaseModel):
+    medications: list[str] = Field(default_factory=list)
+
+
+class MedicationAnalysisRequest(BaseModel):
+    symptom_text: str = Field(..., min_length=2)
+    medication_name: str | None = None
+    generate_report: bool = True
 
 
 @app.get("/health")
@@ -145,12 +171,112 @@ def get_patient_profile(patient_id: str) -> dict:
 
 @app.get("/report/{patient_id}")
 def report(patient_id: str) -> dict:
-    patient = PATIENTS.get(patient_id) or get_patient(patient_id)
+    patient = get_patient(patient_id)
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
     if not patient.latest_report:
         raise HTTPException(status_code=404, detail="No report generated yet")
     return {"patient_id": patient_id, "report": patient.latest_report}
+
+
+@app.get("/patient/{patient_id}")
+def patient_profile(patient_id: str) -> dict:
+    patient = get_patient(patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    metadata = get_patient_metadata(patient_id)
+    return {
+        "patient_id": patient.id,
+        "name": patient.name,
+        "age": patient.age,
+        "conditions": patient.conditions,
+        "medications": patient.medications,
+        "assigned_doctor_id": patient.assigned_doctor_id,
+        "latest_assessment": patient.latest_assessment,
+        "has_report": bool(patient.latest_report),
+        "metadata": metadata,
+    }
+
+
+@app.get("/patient/{patient_id}/overview")
+def patient_overview(patient_id: str) -> dict:
+    patient = get_patient(patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    metadata = get_patient_metadata(patient_id)
+    medication_plan = metadata.get("medication_plan", [])
+    if not medication_plan and patient.medications:
+        medication_plan = [
+            {
+                "name": med,
+                "for": "Condition management",
+                "time": "8:00 AM",
+                "completed": False,
+            }
+            for med in patient.medications
+        ]
+
+    return {
+        "patient_id": patient.id,
+        "name": patient.name,
+        "age": patient.age,
+        "conditions": patient.conditions,
+        "medications": patient.medications,
+        "latest_assessment": patient.latest_assessment,
+        "medication_plan": medication_plan,
+        "symptoms_log": metadata.get("symptoms_log", []),
+        "blood_type": metadata.get("blood_type"),
+        "allergies": metadata.get("allergies", []),
+        "date_of_birth": metadata.get("date_of_birth"),
+        "contact": metadata.get("contact", {}),
+        "location": metadata.get("location"),
+    }
+
+
+@app.post("/patient/{patient_id}/medications")
+def update_medications(patient_id: str, payload: PatientMedicationsRequest) -> dict:
+    meds = [m.strip() for m in payload.medications if m.strip()]
+    ok = update_patient_medications(patient_id, meds)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return {"patient_id": patient_id, "medications": meds}
+
+
+@app.get("/patient/{patient_id}/medication-validation")
+def medication_validation(patient_id: str) -> dict:
+    try:
+        return validate_patient_medications(patient_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/patient/{patient_id}/medication-analysis")
+def medication_analysis(patient_id: str, payload: MedicationAnalysisRequest) -> dict:
+    try:
+        return analyze_medication_case(
+            patient_id,
+            payload.symptom_text,
+            payload.medication_name,
+            generate_report_now=payload.generate_report,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/doctor/{doctor_id}/patients")
+def doctor_patients(doctor_id: str) -> dict:
+    user = get_user(doctor_id)
+    if not user or user["role"] != "doctor":
+        raise HTTPException(status_code=404, detail="Doctor not found")
+    return {"doctor_id": doctor_id, "patients": list_patients_by_doctor(doctor_id)}
+
+
+@app.get("/doctor/{doctor_id}/reports")
+def doctor_reports(doctor_id: str) -> dict:
+    user = get_user(doctor_id)
+    if not user or user["role"] != "doctor":
+        raise HTTPException(status_code=404, detail="Doctor not found")
+    return {"doctor_id": doctor_id, "reports": list_reports_for_doctor(doctor_id)}
 
 
 if __name__ == "__main__":

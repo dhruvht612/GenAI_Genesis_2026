@@ -19,6 +19,7 @@ class PatientRecord:
     id: str
     name: str
     age: int
+    assigned_doctor_id: str | None
     conditions: list[str]
     medications: list[str]
     profiles: list[MedicationProfile]
@@ -54,11 +55,3 @@ MOCK_MEDICATION_DB: dict[str, dict[str, Any]] = {
     },
 }
 
-DEMO_PATIENT = {
-    "name": "Maria Chen",
-    "age": 58,
-    "conditions": ["Type 2 Diabetes", "Hypertension", "High Cholesterol"],
-    "medications": ["Metformin", "Lisinopril", "Atorvastatin"],
-}
-
-PATIENTS: dict[str, PatientRecord] = {}

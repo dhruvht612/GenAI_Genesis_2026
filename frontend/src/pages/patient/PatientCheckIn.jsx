@@ -62,13 +62,17 @@ export default function PatientCheckIn() {
 
   const sessionUserId = sessionStorage.getItem('mediguard_user_id');
   const sessionName = sessionStorage.getItem('mediguard_displayName') || 'Patient';
+  const assignedDoctorId = sessionStorage.getItem('mediguard_assigned_doctor_id') || 'DR-1001';
+  const storedConditions = JSON.parse(localStorage.getItem('mediguard_conditions') || 'null') || ['Type 2 Diabetes'];
+  const storedMeds = JSON.parse(localStorage.getItem('mediguard_medications') || 'null') || ['Metformin', 'Lisinopril', 'Atorvastatin'];
 
   const patientProfile = {
     user_id: sessionUserId,
+    assigned_doctor_id: assignedDoctorId,
     name: sessionName,
-    age: 58,
-    conditions: ['Type 2 Diabetes', 'Hypertension', 'High Cholesterol'],
-    medications: ['Metformin', 'Lisinopril', 'Atorvastatin'],
+    age: 41,
+    conditions: storedConditions,
+    medications: storedMeds,
   };
 
   const isConnected = useMemo(() => Boolean(patientId), [patientId]);

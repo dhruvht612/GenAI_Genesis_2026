@@ -1,10 +1,5 @@
 import { Link, useOutletContext } from 'react-router-dom';
 
-const RECENT_SYMPTOMS = [
-  { name: 'Mild headache', count: 2 },
-  { name: 'Fatigue', count: 1 },
-];
-
 function getGreeting() {
   const hour = new Date().getHours();
   if (hour < 12) return 'Good Morning';
@@ -22,6 +17,10 @@ export default function PatientDashboardOverview() {
   const name = profile?.name || sessionStorage.getItem('mediguard_displayName') || 'Patient';
   const medications = profile?.medications || [];
   const primaryCondition = profile?.conditions?.[0];
+  const recentSymptoms = [
+    { name: 'Mild headache', count: 2 },
+    { name: 'Fatigue', count: 1 },
+  ];
 
   return (
     <div className="patient-content page-enter">
@@ -78,12 +77,13 @@ export default function PatientDashboardOverview() {
             <p className="patient-symptoms-subtitle">Last 7 days overview</p>
             <div className="dashboard-card patient-symptoms-card">
               <ul className="patient-symptoms-list">
-                {RECENT_SYMPTOMS.map((s, i) => (
+                {recentSymptoms.map((s, i) => (
                   <li key={i} className="patient-symptom-item">
-                    <span className="patient-symptom-name">{s.name}</span>
+                    <span className="patient-symptom-name">{s.name || 'Symptom'}</span>
                     <span className="patient-symptom-count">{s.count}x</span>
                   </li>
                 ))}
+                {recentSymptoms.length === 0 && <li className="patient-symptom-item"><span className="patient-symptom-name">No symptoms logged</span></li>}
               </ul>
             </div>
           </section>
