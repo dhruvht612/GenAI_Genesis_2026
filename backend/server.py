@@ -124,6 +124,25 @@ async def proactive_checkin(patient_id: str) -> StreamingResponse:
     return StreamingResponse(stream, media_type="text/event-stream")
 
 
+@app.get("/patient/{patient_id}")
+def get_patient_profile(patient_id: str) -> dict:
+    """Get patient profile for editing (name, age, conditions, medications)."""
+    patient = PATIENTS.get(patient_id) or get_patient(patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return {
+        "patient_id": patient.id,
+        "name": patient.name,
+        "age": patient.age,
+        "conditions": patient.conditions,
+        "medications": patient.medications,
+        "profiles": [
+            {"name": p.name, "dosage": p.dosage, "schedule": p.schedule}
+            for p in patient.profiles
+        ],
+    }
+
+
 @app.get("/report/{patient_id}")
 def report(patient_id: str) -> dict:
     patient = PATIENTS.get(patient_id) or get_patient(patient_id)

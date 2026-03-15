@@ -1,6 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useLocation, useNavigate, Outlet, NavLink } from 'react-router-dom';
 import './Dashboard.css';
+
+const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
 
 export default function Dashboard() {
   const location = useLocation();
@@ -9,9 +11,40 @@ export default function Dashboard() {
   const stateEmail = location.state?.email;
   const role = stateRole || sessionStorage.getItem('mediguard_role') || '';
   const email = stateEmail || sessionStorage.getItem('mediguard_email') || '';
-  const displayName = sessionStorage.getItem('mediguard_displayName') || 'Patient';
+  const sessionName = sessionStorage.getItem('mediguard_displayName') || 'Patient';
   const userId = sessionStorage.getItem('mediguard_user_id') || '';
 
+  const [profile, setProfile] = useState(null);
+
+  const refetchProfile = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const res = await fetch(`${API}/patient/${userId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setProfile({
+          name: data.name,
+          age: data.age,
+          conditions: data.conditions || [],
+          medications: data.medications || [],
+        });
+      } else {
+        setProfile({ name: sessionName, age: null, conditions: [], medications: [] });
+      }
+    } catch {
+      setProfile({ name: sessionName, age: null, conditions: [], medications: [] });
+    }
+  }, [userId, sessionName]);
+
+  useEffect(() => {
+    refetchProfile();
+  }, [refetchProfile]);
+
+  useEffect(() => {
+    if (location.pathname === '/dashboard') refetchProfile();
+  }, [location.pathname, refetchProfile]);
+
+  const displayName = profile?.name || sessionName;
   const initials = displayName
     .split(' ')
     .filter(Boolean)
@@ -104,7 +137,7 @@ export default function Dashboard() {
               </div>
             </header>
             <div className="patient-content">
-              <Outlet />
+              <Outlet context={{ profile, setProfile, refetchProfile }} />
             </div>
           </div>
         </div>

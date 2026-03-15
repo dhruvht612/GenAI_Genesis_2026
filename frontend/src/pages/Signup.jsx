@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import RoleSelector from '../components/RoleSelector';
 import AuthSidePanel from '../components/AuthSidePanel';
 import MedicationTagInput from '../components/MedicationTagInput';
+import ProfileSetupModal from '../components/ProfileSetupModal';
 import './Auth.css';
 
 const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
@@ -39,6 +40,8 @@ export default function Signup() {
   const [terms, setTerms] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [signupDisplayName, setSignupDisplayName] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -61,7 +64,12 @@ export default function Signup() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.detail || 'Signup failed');
 
-      navigate('/login', { state: { message: 'Account created. Please log in.' } });
+      if (role === 'patient') {
+        setSignupDisplayName(data.display_name || `${firstName} ${lastName}`.trim());
+        setShowProfileModal(true);
+      } else {
+        navigate('/login', { state: { message: 'Account created. Please log in.' } });
+      }
     } catch (err) {
       setErrorMessage(err.message || 'Unable to create account');
     } finally {
@@ -69,8 +77,19 @@ export default function Signup() {
     }
   };
 
+  const handleProfileComplete = () => {
+    setShowProfileModal(false);
+    navigate('/login', { state: { message: 'Account created. Please log in.' } });
+  };
+
   return (
     <div className="auth-page page-enter">
+      {showProfileModal && (
+        <ProfileSetupModal
+          displayName={signupDisplayName}
+          onComplete={handleProfileComplete}
+        />
+      )}
       <div className="auth-split">
         <AuthSidePanel />
         <div className="auth-form-panel">
