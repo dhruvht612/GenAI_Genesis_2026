@@ -15,8 +15,10 @@ from agent import (
     validate_patient_medications,
 )
 from storage import (
+    add_care_message,
     authenticate_user,
     create_user,
+    get_unread_messages_for_patient,
     get_chat_history,
     get_patient_metadata,
     get_patient,
@@ -25,7 +27,10 @@ from storage import (
     initialize_db,
     list_patients_by_doctor,
     list_reports_for_doctor,
+    list_care_messages,
+    mark_messages_read_for_patient,
     update_patient_medications,
+    update_patient_profile,
 )
 
 initialize_db()
@@ -45,7 +50,7 @@ class SetupRequest(BaseModel):
     user_id: str | None = Field(default=None, examples=["MJ-2024"])
     assigned_doctor_id: str | None = Field(default="DR-1001", examples=["DR-1001"])
     name: str = Field(..., examples=["Maria Chen"])
-    age: int = Field(..., ge=0, le=120)
+    age: int = Field(default=35, ge=0, le=120)
     conditions: list[str] = Field(default_factory=list)
     medications: list[str] = Field(default_factory=list)
 
@@ -77,6 +82,15 @@ class MedicationAnalysisRequest(BaseModel):
     symptom_text: str = Field(..., min_length=2)
     medication_name: str | None = None
     generate_report: bool = True
+
+
+class PatientProfileUpdateRequest(BaseModel):
+    conditions: list[str] = Field(default_factory=list)
+    medications: list[str] = Field(default_factory=list)
+
+
+class CareMessageRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=2000)
 
 
 @app.get("/health")
@@ -222,6 +236,7 @@ def patient_overview(patient_id: str) -> dict:
         "date_of_birth": metadata.get("date_of_birth"),
         "contact": metadata.get("contact", {}),
         "location": metadata.get("location"),
+        "unread_doctor_messages": get_unread_messages_for_patient(patient_id),
     }
 
 
@@ -232,6 +247,18 @@ def update_medications(patient_id: str, payload: PatientMedicationsRequest) -> d
     if not ok:
         raise HTTPException(status_code=404, detail="Patient not found")
     return {"patient_id": patient_id, "medications": meds}
+
+
+@app.patch("/patient/{patient_id}/profile")
+def update_patient_profile_endpoint(patient_id: str, payload: PatientProfileUpdateRequest) -> dict:
+    ok = update_patient_profile(patient_id, payload.conditions, payload.medications)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return {
+        "patient_id": patient_id,
+        "conditions": payload.conditions,
+        "medications": payload.medications,
+    }
 
 
 @app.get("/patient/{patient_id}/medication-validation")
@@ -269,6 +296,73 @@ def doctor_reports(doctor_id: str) -> dict:
     if not user or user["role"] != "doctor":
         raise HTTPException(status_code=404, detail="Doctor not found")
     return {"doctor_id": doctor_id, "reports": list_reports_for_doctor(doctor_id)}
+
+
+@app.get("/doctor/{doctor_id}/patients/{patient_id}/messages")
+def doctor_patient_messages(doctor_id: str, patient_id: str) -> dict:
+    user = get_user(doctor_id)
+    if not user or user["role"] != "doctor":
+        raise HTTPException(status_code=404, detail="Doctor not found")
+    patient = get_patient(patient_id)
+    if not patient or patient.assigned_doctor_id != doctor_id:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return {
+        "doctor_id": doctor_id,
+        "patient_id": patient_id,
+        "messages": list_care_messages(patient_id, doctor_id),
+    }
+
+
+@app.post("/doctor/{doctor_id}/patients/{patient_id}/messages")
+def doctor_send_message(doctor_id: str, patient_id: str, payload: CareMessageRequest) -> dict:
+    user = get_user(doctor_id)
+    if not user or user["role"] != "doctor":
+        raise HTTPException(status_code=404, detail="Doctor not found")
+    patient = get_patient(patient_id)
+    if not patient or patient.assigned_doctor_id != doctor_id:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    message_id = add_care_message(
+        patient_id=patient_id,
+        doctor_id=doctor_id,
+        sender_role="doctor",
+        message=payload.message.strip(),
+    )
+    return {"message_id": message_id, "status": "sent"}
+
+
+@app.get("/patient/{patient_id}/messages")
+def patient_messages(patient_id: str) -> dict:
+    patient = get_patient(patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    doctor_id = patient.assigned_doctor_id or ""
+    messages = list_care_messages(patient_id, doctor_id) if doctor_id else []
+    if doctor_id:
+        mark_messages_read_for_patient(patient_id, doctor_id)
+    return {
+        "patient_id": patient_id,
+        "doctor_id": doctor_id,
+        "messages": messages,
+    }
+
+
+@app.post("/patient/{patient_id}/messages")
+def patient_send_message(patient_id: str, payload: CareMessageRequest) -> dict:
+    patient = get_patient(patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    doctor_id = patient.assigned_doctor_id
+    if not doctor_id:
+        raise HTTPException(status_code=400, detail="Patient has no assigned doctor")
+
+    message_id = add_care_message(
+        patient_id=patient_id,
+        doctor_id=doctor_id,
+        sender_role="patient",
+        message=payload.message.strip(),
+    )
+    return {"message_id": message_id, "status": "sent"}
 
 
 if __name__ == "__main__":

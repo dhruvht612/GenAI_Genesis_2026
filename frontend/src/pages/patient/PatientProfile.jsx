@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react';
+import MedicationTagInput from '../../components/MedicationTagInput';
+import { useTheme } from '../../contexts/ThemeContext';
 import './PatientProfile.css';
 
 const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
 
 export default function PatientProfile() {
   const [pushNotifications, setPushNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
   const [overview, setOverview] = useState(null);
-  const [newMedication, setNewMedication] = useState('');
-  const [savingMedication, setSavingMedication] = useState(false);
-  const [medicationStatus, setMedicationStatus] = useState('');
+  const [conditions, setConditions] = useState([]);
+  const [medications, setMedications] = useState([]);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileStatus, setProfileStatus] = useState('');
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     const patientId = sessionStorage.getItem('mediguard_user_id');
@@ -42,34 +45,34 @@ export default function PatientProfile() {
   const patientId = overview?.patient_id || sessionStorage.getItem('mediguard_user_id') || 'N/A';
   const contact = overview?.contact || {};
   const meds = overview?.medication_plan || [];
+  const conditionsList = overview?.conditions || [];
 
-  const handleAddMedication = async () => {
-    const med = newMedication.trim();
-    if (!med) return;
+  useEffect(() => {
+    if (!overview) return;
+    setConditions(overview.conditions || []);
+    setMedications(overview.medications || []);
+  }, [overview]);
 
-    const patientId = sessionStorage.getItem('mediguard_user_id');
-    if (!patientId) return;
+  const saveClinicalProfile = async () => {
+    const id = sessionStorage.getItem('mediguard_user_id');
+    if (!id) return;
 
-    const currentMeds = overview?.medications || [];
-    const updated = Array.from(new Set([...currentMeds, med]));
-
-    setSavingMedication(true);
-    setMedicationStatus('');
+    setSavingProfile(true);
+    setProfileStatus('');
     try {
-      const res = await fetch(`${API}/patient/${patientId}/medications`, {
-        method: 'POST',
+      const res = await fetch(`${API}/patient/${id}/profile`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ medications: updated }),
+        body: JSON.stringify({ conditions, medications }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.detail || 'Failed to save medication');
-      setNewMedication('');
-      setMedicationStatus('Medication added');
+      if (!res.ok) throw new Error(data?.detail || 'Failed to save profile');
+      setProfileStatus('Profile updated');
       await reloadOverview();
     } catch {
-      setMedicationStatus('Could not add medication');
+      setProfileStatus('Could not update profile');
     } finally {
-      setSavingMedication(false);
+      setSavingProfile(false);
     }
   };
 
@@ -112,9 +115,9 @@ export default function PatientProfile() {
               <button
                 type="button"
                 role="switch"
-                aria-checked={darkMode}
-                className={`profile-toggle ${darkMode ? 'profile-toggle-on' : ''}`}
-                onClick={() => setDarkMode((v) => !v)}
+                aria-checked={theme === 'dark'}
+                className={`profile-toggle ${theme === 'dark' ? 'profile-toggle-on' : ''}`}
+                onClick={() => setTheme((t) => (t === 'light' ? 'dark' : 'light'))}
               >
                 <span className="profile-toggle-dot" />
               </button>
@@ -143,21 +146,36 @@ export default function PatientProfile() {
             </div>
           </div>
           <div className="dashboard-card profile-meds-card">
-            <h3 className="profile-card-heading">💊 Active Medications</h3>
-            <div className="profile-add-medication-row">
-              <input
-                type="text"
-                className="form-input"
-                placeholder="Add medication (e.g. Acetaminophen 500mg)"
-                value={newMedication}
-                onChange={(e) => setNewMedication(e.target.value)}
-                disabled={savingMedication}
-              />
-              <button type="button" className="profile-add-medication-btn" onClick={handleAddMedication} disabled={savingMedication}>
-                {savingMedication ? 'Saving...' : 'Add'}
+            <h3 className="profile-card-heading">🩺 Clinical Profile</h3>
+            <p className="profile-notifications-placeholder">Add or update your conditions and medications here. Your doctor and AI check-in will use this data.</p>
+
+            <p className="profile-card-heading" style={{ marginTop: '0.8rem' }}>Conditions</p>
+            <MedicationTagInput
+              value={conditions}
+              onChange={setConditions}
+              placeholder="Type condition and press Enter (e.g. Asthma)"
+            />
+
+            <p className="profile-card-heading" style={{ marginTop: '0.8rem' }}>Medications</p>
+            <MedicationTagInput
+              value={medications}
+              onChange={setMedications}
+              placeholder="Type medication and press Enter (e.g. Albuterol inhaler)"
+            />
+
+            <div className="profile-add-medication-row" style={{ marginTop: '0.9rem' }}>
+              <button type="button" className="profile-add-medication-btn" onClick={saveClinicalProfile} disabled={savingProfile}>
+                {savingProfile ? 'Saving...' : 'Save Clinical Profile'}
               </button>
             </div>
-            {medicationStatus && <p className="profile-notifications-placeholder">{medicationStatus}</p>}
+            {profileStatus && <p className="profile-notifications-placeholder">{profileStatus}</p>}
+
+            {conditionsList.length > 0 && (
+              <p className="profile-notifications-placeholder" style={{ marginTop: '0.8rem' }}>
+                Active conditions: {conditionsList.join(', ')}
+              </p>
+            )}
+
             {meds.map((m, i) => (
               <div key={i} className="profile-med-row">
                 <strong>{m.name}</strong>

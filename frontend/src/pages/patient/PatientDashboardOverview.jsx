@@ -62,6 +62,7 @@ export default function PatientDashboardOverview() {
   const riskScore = overview?.risk_score ?? null;
   const riskLabel = riskScore === null ? null : riskScore >= 7 ? 'High Risk' : riskScore >= 4 ? 'Moderate' : 'Low Risk';
   const riskColor = riskScore === null ? null : riskScore >= 7 ? '#ef4444' : riskScore >= 4 ? '#f59e0b' : '#10b981';
+  const riskText = riskLabel || 'Complete AI Check-In';
 
   const recentSymptoms = overview?.symptoms_log || [];
   const patientName = overview?.name || sessionStorage.getItem('mediguard_displayName') || 'Patient';
@@ -77,11 +78,9 @@ export default function PatientDashboardOverview() {
         <div className="patient-health-card">
           <span className="patient-health-label">Overall Health Status</span>
           <span className="patient-health-value" style={riskColor ? { color: riskColor } : {}}>
-            {riskLabel || 'No Assessment Yet'}
+            {riskText}
           </span>
-          <span className="patient-health-icon" aria-hidden>
-            {riskScore === null ? '📋' : riskScore >= 7 ? '⚠️' : riskScore >= 4 ? '🟡' : '✅'}
-          </span>
+          <span className="patient-health-subtle">{riskScore === null ? 'No score yet' : `Severity ${riskScore}/10`}</span>
         </div>
       </div>
       <div className="patient-two-col">
@@ -116,7 +115,7 @@ export default function PatientDashboardOverview() {
               </div>
               );
             })}
-            {todaysMeds.length === 0 && <p className="patient-symptoms-subtitle">No medications in profile yet.</p>}
+            {todaysMeds.length === 0 && <p className="patient-empty-inline">No medications in profile yet.</p>}
           </div>
         </section>
         <div className="patient-right-col">

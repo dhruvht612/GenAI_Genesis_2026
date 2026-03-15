@@ -76,7 +76,8 @@
   max-width: 75%;
   padding: 0.85rem 1rem;
   border-radius: var(--radius-lg);
-  background: #f0f0ef;
+  background: color-mix(in srgb, var(--card-bg) 88%, var(--border) 12%);
+  border: 1px solid var(--border);
 }
 
 .checkin-message-user .checkin-message-bubble {
@@ -118,8 +119,8 @@
   padding: 0.4rem 0.85rem;
   border-radius: 999px;
   border: none;
-  background: rgba(124, 92, 191, 0.12);
-  color: var(--secondary);
+  background: color-mix(in srgb, var(--secondary) 16%, transparent);
+  color: var(--text);
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
@@ -127,7 +128,7 @@
 }
 
 .checkin-quick-btn:hover {
-  background: rgba(124, 92, 191, 0.2);
+  background: color-mix(in srgb, var(--secondary) 24%, transparent);
 }
 
 .checkin-input-wrap {
@@ -136,20 +137,6 @@
   gap: 0.5rem;
   padding: 0.5rem 0;
   border-top: 1px solid var(--border);
-}
-
-.checkin-mic {
-  width: 40px;
-  height: 40px;
-  border: none;
-  background: transparent;
-  font-size: 1.2rem;
-  cursor: pointer;
-  border-radius: var(--radius);
-}
-
-.checkin-mic:hover {
-  background: rgba(0, 0, 0, 0.05);
 }
 
 .checkin-input {

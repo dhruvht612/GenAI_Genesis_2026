@@ -81,6 +81,21 @@ def initialize_db() -> None:
 
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS care_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                patient_id TEXT NOT NULL,
+                doctor_id TEXT NOT NULL,
+                sender_role TEXT NOT NULL,
+                message TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                read_by_patient INTEGER NOT NULL DEFAULT 0,
+                read_by_doctor INTEGER NOT NULL DEFAULT 0
+            )
+            """
+        )
+
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS patient_metadata (
                 patient_id TEXT PRIMARY KEY,
                 date_of_birth TEXT,
@@ -468,6 +483,73 @@ def update_patient_medications(patient_id: str, medications: list[str]) -> bool:
     return True
 
 
+def update_patient_profile(patient_id: str, conditions: list[str], medications: list[str]) -> bool:
+    cleaned_conditions = sorted({c.strip() for c in conditions if c and c.strip()})
+    cleaned_medications = sorted({m.strip() for m in medications if m and m.strip()})
+
+    with _connect() as conn:
+        row = conn.execute("SELECT id FROM patients WHERE id = ?", (patient_id,)).fetchone()
+        if not row:
+            return False
+
+        conn.execute(
+            """
+            UPDATE patients
+            SET conditions_json = ?, medications_json = ?
+            WHERE id = ?
+            """,
+            (json.dumps(cleaned_conditions), json.dumps(cleaned_medications), patient_id),
+        )
+
+        existing_meta = conn.execute(
+            "SELECT * FROM patient_metadata WHERE patient_id = ?", (patient_id,)
+        ).fetchone()
+
+        default_plan = [
+            {
+                "name": med,
+                "for": "Condition management",
+                "time": "8:00 AM",
+                "completed": False,
+            }
+            for med in cleaned_medications
+        ]
+
+        if existing_meta:
+            conn.execute(
+                """
+                UPDATE patient_metadata
+                SET medication_plan_json = ?, updated_at = ?
+                WHERE patient_id = ?
+                """,
+                (json.dumps(default_plan), datetime.now(UTC).isoformat(), patient_id),
+            )
+        else:
+            conn.execute(
+                """
+                INSERT INTO patient_metadata (
+                    patient_id, date_of_birth, blood_type, allergies_json, contact_json, location,
+                    medication_plan_json, symptoms_log_json, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    patient_id,
+                    None,
+                    None,
+                    json.dumps([]),
+                    json.dumps({}),
+                    None,
+                    json.dumps(default_plan),
+                    json.dumps([]),
+                    datetime.now(UTC).isoformat(),
+                ),
+            )
+
+        conn.commit()
+
+    return True
+
+
 def add_chat_message(patient_id: str, role: str, message: str) -> None:
     with _connect() as conn:
         conn.execute(
@@ -475,6 +557,86 @@ def add_chat_message(patient_id: str, role: str, message: str) -> None:
             (patient_id, role, message, datetime.now(UTC).isoformat()),
         )
         conn.commit()
+
+
+def add_care_message(
+    *,
+    patient_id: str,
+    doctor_id: str,
+    sender_role: str,
+    message: str,
+) -> int:
+    now_iso = datetime.now(UTC).isoformat()
+    read_by_patient = 1 if sender_role == "patient" else 0
+    read_by_doctor = 1 if sender_role == "doctor" else 0
+
+    with _connect() as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO care_messages (
+                patient_id, doctor_id, sender_role, message, created_at, read_by_patient, read_by_doctor
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (patient_id, doctor_id, sender_role, message, now_iso, read_by_patient, read_by_doctor),
+        )
+        conn.commit()
+        return int(cur.lastrowid)
+
+
+def list_care_messages(patient_id: str, doctor_id: str) -> list[dict[str, Any]]:
+    with _connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, patient_id, doctor_id, sender_role, message, created_at, read_by_patient, read_by_doctor
+            FROM care_messages
+            WHERE patient_id = ? AND doctor_id = ?
+            ORDER BY id ASC
+            """,
+            (patient_id, doctor_id),
+        ).fetchall()
+
+    return [
+        {
+            "message_id": int(row["id"]),
+            "patient_id": row["patient_id"],
+            "doctor_id": row["doctor_id"],
+            "sender_role": row["sender_role"],
+            "message": row["message"],
+            "created_at": row["created_at"],
+            "read_by_patient": bool(row["read_by_patient"]),
+            "read_by_doctor": bool(row["read_by_doctor"]),
+        }
+        for row in rows
+    ]
+
+
+def mark_messages_read_for_patient(patient_id: str, doctor_id: str) -> None:
+    with _connect() as conn:
+        conn.execute(
+            """
+            UPDATE care_messages
+            SET read_by_patient = 1
+            WHERE patient_id = ? AND doctor_id = ?
+            """,
+            (patient_id, doctor_id),
+        )
+        conn.commit()
+
+
+def get_unread_messages_for_patient(patient_id: str) -> int:
+    with _connect() as conn:
+        row = conn.execute(
+            """
+            SELECT COUNT(*) AS unread_count
+            FROM care_messages
+            WHERE patient_id = ? AND sender_role = 'doctor' AND read_by_patient = 0
+            """,
+            (patient_id,),
+        ).fetchone()
+
+    if not row:
+        return 0
+    return int(row["unread_count"] or 0)
 
 
 def get_chat_history(patient_id: str, limit: int = 60) -> list[dict[str, Any]]:
@@ -505,10 +667,9 @@ def get_patient_risk_score(patient_id: str) -> int | None:
 
 def update_risk_score(patient_id: str, score: int) -> None:
     with _connect() as conn:
-        # Only raise the score, never lower it (doctor must explicitly clear)
         conn.execute(
-            "UPDATE patients SET risk_score = ? WHERE id = ? AND (risk_score IS NULL OR risk_score < ?)",
-            (score, patient_id, score),
+            "UPDATE patients SET risk_score = ? WHERE id = ?",
+            (score, patient_id),
         )
         conn.commit()
 

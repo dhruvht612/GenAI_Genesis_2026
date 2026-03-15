@@ -901,7 +901,7 @@
 .patient-sidebar {
   width: 220px;
   min-height: 100%;
-  background: #fafafa;
+  background: var(--card-bg);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -951,11 +951,11 @@
 
 .patient-nav-item:hover {
   color: var(--text);
-  background: rgba(0, 0, 0, 0.04);
+  background: color-mix(in srgb, var(--text) 8%, transparent);
 }
 
 .patient-nav-item-active {
-  background: rgba(27, 184, 106, 0.12);
+  background: color-mix(in srgb, var(--primary) 18%, transparent);
   color: var(--primary);
 }
 
@@ -1070,7 +1070,29 @@
 }
 
 .patient-topbar-btn:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: color-mix(in srgb, var(--text) 10%, transparent);
+}
+
+.patient-notification-btn {
+  position: relative;
+}
+
+.patient-notification-dot {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--card-bg);
 }
 
 .patient-topbar-logout {
@@ -1153,6 +1175,13 @@
   top: 50%;
   transform: translateY(-50%);
   font-size: 1.5rem;
+  opacity: 0.9;
+}
+
+.patient-health-subtle {
+  display: block;
+  font-size: 0.78rem;
+  margin-top: 0.35rem;
   opacity: 0.9;
 }
 
@@ -1303,6 +1332,34 @@
   font-size: 0.85rem;
   color: var(--text-muted);
   margin: -0.25rem 0 0.75rem 0;
+}
+
+.patient-empty-inline {
+  margin: 0;
+  padding: 1rem 1.25rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+[data-theme="dark"] .patient-sidebar {
+  background: #0b1220;
+  border-right-color: #1e293b;
+}
+
+[data-theme="dark"] .patient-topbar {
+  background: #0b1220;
+  border-bottom-color: #1e293b;
+}
+
+[data-theme="dark"] .patient-topbar-btn,
+[data-theme="dark"] .patient-nav-item {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .patient-nav-item-active {
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.2);
 }
 
 .patient-symptoms-card {

@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 _SEVERITY_FLOORS: list[tuple[list[str], int, str]] = [
     (["seizure", "seizures"], 9, "Seizure reported — critical neurological emergency."),
     (["chest pain", "chest tightness", "chest pressure"], 9, "Chest pain/tightness reported — potential cardiac emergency."),
-    (["difficulty breathing", "can't breathe", "cannot breathe", "trouble breathing", "short of breath"], 9, "Breathing difficulty reported — potential respiratory emergency."),
+    (["difficulty breathing", "can't breathe", "cannot breathe", "can't breath", "cannot breath", "not being able to breathe", "not being able to breath", "trouble breathing", "short of breath"], 9, "Breathing difficulty reported — potential respiratory emergency."),
     (["vomit", "threw up", "throwing up", "vomiting"], 8, "Vomiting reported — significant GI distress."),
     (["fainting", "fainted", "blacked out", "passed out", "lost consciousness"], 8, "Loss of consciousness/fainting reported — requires urgent evaluation."),
     (["blood in stool", "blood in urine", "bloody stool", "bloody urine", "rectal bleeding"], 8, "Blood in stool/urine reported — requires urgent evaluation."),
@@ -27,6 +27,15 @@ _OTHER_SYMPTOM_KEYWORDS = [
     "swelling", "breathing", "chest", "fever", "cough", "blood", "stomach", "cramp",
     "numbness", "tingling", "ache", "blurry", "vision",
 ]
+
+
+def _has_condition(conditions: list[str], target: str) -> bool:
+    target_l = target.lower()
+    for cond in conditions:
+        cond_l = cond.lower()
+        if target_l in cond_l:
+            return True
+    return False
 
 
 def _has_medication(medications: list[str], target: str) -> bool:
@@ -75,9 +84,11 @@ def assess_symptoms(
     *,
     user_text: str,
     medications: list[str],
+    conditions: list[str] | None = None,
 ) -> dict:
     """Rule-based symptom assessor with safety-critical keyword floors."""
     text = user_text.lower()
+    profile_conditions = conditions or []
 
     # --- Step 1: keyword floor (runs BEFORE medication logic) ---
     floor_score, floor_rationale = _keyword_floor(text)
@@ -108,6 +119,31 @@ def assess_symptoms(
             urgency = "medium" if urgency == "low" else urgency
             score = max(score, 5)
             rationale.append("GI symptoms reported with Metformin in profile.")
+
+    # Condition-aware escalation for asthma/COPD with respiratory distress
+    breathing_distress = (
+        "difficulty breathing" in text
+        or "short of breath" in text
+        or "can't breathe" in text
+        or "cannot breathe" in text
+        or "wheezing" in text
+        or "breathless" in text
+    )
+    if breathing_distress and (
+        _has_condition(profile_conditions, "asthma") or _has_condition(profile_conditions, "copd")
+    ):
+        urgency = "high"
+        score = max(score, 10)
+        rationale.append("Respiratory distress reported with asthma/COPD history — emergency-level concern.")
+
+    if ("chest pain" in text or "chest tightness" in text) and (
+        _has_condition(profile_conditions, "heart")
+        or _has_condition(profile_conditions, "hypertension")
+        or _has_condition(profile_conditions, "coronary")
+    ):
+        urgency = "high"
+        score = max(score, 10)
+        rationale.append("Chest symptoms reported with cardiovascular risk history — emergency-level concern.")
 
     # --- Step 3: apply keyword floor as hard minimum ---
     score = max(score, floor_score)

@@ -30,11 +30,6 @@ export default function Signup() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.detail || 'Signup failed');
 
-      if (formData.role === 'patient') {
-        localStorage.setItem('mediguard_conditions', JSON.stringify(formData.primaryCondition ? [formData.primaryCondition] : []));
-        localStorage.setItem('mediguard_medications', JSON.stringify(formData.medications || []));
-      }
-
       navigate('/login', { state: { message: 'Account created. Please log in.' } });
     } catch (err) {
       setErrorMessage(err.message || 'Unable to create account');

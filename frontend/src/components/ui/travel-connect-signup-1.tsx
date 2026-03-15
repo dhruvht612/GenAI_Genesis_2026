@@ -4,17 +4,6 @@ import { ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import RoleSelector from '@/components/RoleSelector';
-import MedicationTagInput from '@/components/MedicationTagInput';
-
-const PRIMARY_CONDITIONS = [
-  'Type 2 Diabetes',
-  'Hypertension',
-  'High Cholesterol',
-  'Asthma',
-  'COPD',
-  'Heart Disease',
-  'Other',
-];
 
 const SPECIALTIES = [
   'Family Medicine',
@@ -162,8 +151,6 @@ export type SignUpFormData = {
   firstName: string;
   lastName: string;
   role: 'patient' | 'doctor';
-  primaryCondition?: string;
-  medications?: string[];
   specialty?: string;
   licenseNumber?: string;
 };
@@ -180,8 +167,6 @@ export function TravelConnectSignUp({ onSubmit, errorMessage, isSubmitting = fal
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [primaryCondition, setPrimaryCondition] = useState('');
-  const [medications, setMedications] = useState<string[]>([]);
   const [specialty, setSpecialty] = useState('');
   const [licenseNumber, setLicenseNumber] = useState('');
   const [terms, setTerms] = useState(false);
@@ -194,8 +179,6 @@ export function TravelConnectSignUp({ onSubmit, errorMessage, isSubmitting = fal
       firstName,
       lastName,
       role,
-      primaryCondition: primaryCondition || undefined,
-      medications: medications.length ? medications : undefined,
       specialty: specialty || undefined,
       licenseNumber: licenseNumber || undefined,
     });
@@ -322,29 +305,9 @@ export function TravelConnectSignUp({ onSubmit, errorMessage, isSubmitting = fal
               </div>
 
               {role === 'patient' && (
-                <>
-                  <div>
-                    <label htmlFor="su-condition" className={labelClass}>Primary condition</label>
-                    <select
-                      id="su-condition"
-                      value={primaryCondition}
-                      onChange={(e) => setPrimaryCondition(e.target.value)}
-                      className={cn(
-                        'flex h-10 w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2',
-                        inputClass
-                      )}
-                    >
-                      <option value="">Select condition</option>
-                      {PRIMARY_CONDITIONS.map((c) => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={labelClass}>Medications</label>
-                    <MedicationTagInput value={medications} onChange={setMedications} placeholder="Type and press Enter" />
-                  </div>
-                </>
+                <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+                  You can add your conditions and medications securely after login in your profile.
+                </div>
               )}
 
               {role === 'doctor' && (

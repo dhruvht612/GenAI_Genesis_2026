@@ -74,7 +74,6 @@ export default function DoctorDashboard() {
               <input type="search" className="doctor-search" placeholder="Search patients..." aria-label="Search patients" />
             </div>
             <button type="button" className="doctor-notifications theme-toggle-btn" onClick={() => setTheme((t) => (t === 'light' ? 'dark' : 'light'))} title={theme === 'light' ? 'Dark mode' : 'Light mode'} aria-label="Toggle theme">{theme === 'light' ? '🌙' : '☀️'}</button>
-            <button type="button" className="doctor-notifications" aria-label="Notifications">🔔</button>
           </header>
           <div className="doctor-content">
             <Outlet />

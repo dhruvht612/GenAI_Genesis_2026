@@ -1,7 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, Outlet, NavLink } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import './Dashboard.css';
+
+const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
 
 export default function Dashboard() {
   const location = useLocation();
@@ -14,6 +16,7 @@ export default function Dashboard() {
   const displayName = sessionStorage.getItem('mediguard_displayName') || 'Patient';
   const userId = sessionStorage.getItem('mediguard_user_id') || 'N/A';
   const initials = displayName.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
   useEffect(() => {
     if (stateRole) sessionStorage.setItem('mediguard_role', stateRole);
@@ -31,6 +34,31 @@ export default function Dashboard() {
       navigate('/doctor', { replace: true });
     }
   }, [role, navigate]);
+
+  useEffect(() => {
+    if (role !== 'patient' || !userId || userId === 'N/A') return;
+
+    let mounted = true;
+    const loadUnread = async () => {
+      try {
+        const res = await fetch(`${API}/patient/${userId}/overview?t=${Date.now()}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (mounted) {
+          setUnreadMessages(Number(data.unread_doctor_messages || 0));
+        }
+      } catch {
+        // ignore transient network issues
+      }
+    };
+
+    loadUnread();
+    const timer = setInterval(loadUnread, 8000);
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
+  }, [role, userId]);
 
   const handleLogout = () => {
     sessionStorage.removeItem('mediguard_role');
@@ -91,7 +119,10 @@ export default function Dashboard() {
               </div>
               <div className="patient-topbar-actions">
                 <button type="button" className="patient-topbar-btn theme-toggle-btn" onClick={() => setTheme((t) => (t === 'light' ? 'dark' : 'light'))} title={theme === 'light' ? 'Dark mode' : 'Light mode'} aria-label="Toggle theme">{theme === 'light' ? '🌙' : '☀️'}</button>
-                <button type="button" className="patient-topbar-btn" aria-label="Notifications">🔔</button>
+                <button type="button" className="patient-topbar-btn patient-notification-btn" aria-label="Notifications">
+                  <span aria-hidden>🔔</span>
+                  {unreadMessages > 0 && <span className="patient-notification-dot">{unreadMessages > 9 ? '9+' : unreadMessages}</span>}
+                </button>
                 <button type="button" className="patient-topbar-btn patient-topbar-logout" onClick={handleLogout}>
                   Log out
                 </button>

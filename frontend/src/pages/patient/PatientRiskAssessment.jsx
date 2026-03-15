@@ -13,6 +13,11 @@ function getRiskInfo(score) {
 export default function PatientRiskScore() {
   const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [symptomText, setSymptomText] = useState('');
+  const [selectedMedication, setSelectedMedication] = useState('');
+  const [analysis, setAnalysis] = useState(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState('');
 
   const patientId = sessionStorage.getItem('mediguard_user_id') || '';
 
@@ -37,7 +42,33 @@ export default function PatientRiskScore() {
 
   const riskScore = overview?.risk_score ?? null;
   const assessment = overview?.latest_assessment || null;
+  const medications = overview?.medications || [];
   const risk = getRiskInfo(riskScore);
+
+  const analyzeMedicationRelevance = async () => {
+    if (!patientId || !symptomText.trim()) return;
+    setAnalyzing(true);
+    setAnalysisError('');
+    setAnalysis(null);
+    try {
+      const res = await fetch(`${API}/patient/${patientId}/medication-analysis`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symptom_text: symptomText.trim(),
+          medication_name: selectedMedication || null,
+          generate_report: true,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.detail || 'Analysis failed');
+      setAnalysis(data);
+    } catch (err) {
+      setAnalysisError(err.message || 'Could not run medication analysis');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   return (
     <div className="patient-page patient-risk page-enter">
@@ -72,6 +103,47 @@ export default function PatientRiskScore() {
           </div>
 
           <div className="risk-right">
+            <div className="dashboard-card risk-form-card">
+              <div className="risk-means-header">
+                <span className="risk-means-icon">💊</span>
+                <h2>Medication Relevance Check</h2>
+              </div>
+              <p className="risk-means-intro">Describe your current symptom. AI will check if it may be linked to your medication profile.</p>
+              <div className="risk-analyze-form">
+                <label>
+                  Medication (optional)
+                  <select value={selectedMedication} onChange={(e) => setSelectedMedication(e.target.value)}>
+                    <option value="">Auto-detect from symptom text</option>
+                    {medications.map((m) => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </label>
+                <label>
+                  Symptom details
+                  <textarea
+                    className="risk-textarea"
+                    placeholder="e.g. I have asthma and I feel short of breath after taking my inhaler"
+                    value={symptomText}
+                    onChange={(e) => setSymptomText(e.target.value)}
+                  />
+                </label>
+                <div className="risk-actions">
+                  <button type="button" className="btn-risk-primary" disabled={analyzing || !symptomText.trim()} onClick={analyzeMedicationRelevance}>
+                    {analyzing ? 'Analyzing...' : 'Analyze Symptom'}
+                  </button>
+                </div>
+              </div>
+              {analysisError && <p className="risk-error-text">{analysisError}</p>}
+              {analysis && (
+                <div className="risk-validation-summary">
+                  <p><strong>Compatibility:</strong> {analysis.compatibility}</p>
+                  <p><strong>Medication verified:</strong> {analysis.medication_verified_in_pharmacy_mcp ? 'Yes (PharmacyMCP)' : 'No / fallback data used'}</p>
+                  <p><strong>Matched side effects:</strong> {(analysis.matched_side_effects || []).join(', ') || 'None identified'}</p>
+                  <p><strong>AI summary:</strong> {analysis.ai_summary}</p>
+                  {analysis.report_generated && <p><strong>Doctor report:</strong> Generated and shared with your doctor dashboard.</p>}
+                </div>
+              )}
+            </div>
+
             <div className="dashboard-card risk-means-card">
               <div className="risk-means-header">
                 <span className="risk-means-icon">🤖</span>

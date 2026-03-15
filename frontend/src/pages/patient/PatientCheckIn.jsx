@@ -64,18 +64,6 @@ export default function PatientCheckIn() {
   const sessionUserId = sessionStorage.getItem('mediguard_user_id') || `PT-${Math.random().toString(36).slice(2, 8)}`;
   const assignedDoctorId = sessionStorage.getItem('mediguard_assigned_doctor_id') || 'DR-1001';
 
-  const storedConditions = JSON.parse(localStorage.getItem('mediguard_conditions') || 'null') || ['Type 2 Diabetes'];
-  const storedMeds = JSON.parse(localStorage.getItem('mediguard_medications') || 'null') || ['Metformin', 'Lisinopril', 'Atorvastatin'];
-
-  const patientProfile = {
-    user_id: sessionUserId,
-    assigned_doctor_id: assignedDoctorId,
-    name: sessionName,
-    age: 41,
-    conditions: storedConditions,
-    medications: storedMeds,
-  };
-
   const isConnected = useMemo(() => Boolean(patientId), [patientId]);
 
   const appendMessage = (from, text) => {
@@ -85,6 +73,15 @@ export default function PatientCheckIn() {
   };
 
   const setupPatient = async () => {
+    const patientProfile = {
+      user_id: sessionUserId,
+      assigned_doctor_id: assignedDoctorId,
+      name: sessionName,
+      age: Number(sessionStorage.getItem('mediguard_age')) || 35,
+      conditions: [],
+      medications: [],
+    };
+
     const res = await fetch(`${API}/setup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -98,13 +95,29 @@ export default function PatientCheckIn() {
     return data.patient_id;
   };
 
+  const ensurePatientSession = async () => {
+    try {
+      const existing = await fetch(`${API}/patient/${sessionUserId}`);
+      if (existing.ok) {
+        setPatientId(sessionUserId);
+        localStorage.setItem('mediguard_patient_id', sessionUserId);
+        setStatus('Connected to backend');
+        return;
+      }
+    } catch {
+      // fallback to setup
+    }
+
+    await setupPatient();
+  };
+
   useEffect(() => {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
 
     const setup = async () => {
       try {
-        await setupPatient();
+        await ensurePatientSession();
       } catch {
         setStatus('Backend offline: running in UI-only mode');
       }
@@ -276,7 +289,6 @@ export default function PatientCheckIn() {
         </div>
       </div>
       <form className="checkin-input-wrap" onSubmit={handleSend}>
-        <button type="button" className="checkin-mic" aria-label="Voice input">🎤</button>
         <input
           type="text"
           className="checkin-input"

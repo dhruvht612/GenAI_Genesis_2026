@@ -89,6 +89,16 @@ def _env_flag(name: str, default: bool = False) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _resolve_gemini_model() -> str:
+    configured = (os.getenv("GEMINI_MODEL") or "").strip()
+    fallback = (os.getenv("GEMINI_FALLBACK_MODEL") or "gemini-3.1-flash-lite").strip()
+    if not configured:
+        return fallback
+    if configured.startswith("gemini-2.5"):
+        return fallback
+    return configured
+
+
 def _rule_based_response(patient: PatientRecord, assessment: dict) -> str:
     return (
         f"Thanks {patient.name}. I assessed your symptoms as {assessment['urgency']} urgency "
@@ -112,7 +122,7 @@ def _gemini_response(
     pharmacy_context: str | None = None,
 ) -> str | None:
     api_key = os.getenv("GOOGLE_API_KEY")
-    model = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
+    model = _resolve_gemini_model()
     if not api_key:
         return None
 
@@ -153,7 +163,7 @@ def _gemini_should_generate_report(
     assessment: dict,
 ) -> bool:
     api_key = os.getenv("GOOGLE_API_KEY")
-    model = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
+    model = _resolve_gemini_model()
     if not api_key:
         return assessment.get("severity_score", 0) >= 7
 
@@ -280,7 +290,11 @@ def analyze_medication_case(
         extracted = _extract_medication_from_text(symptom_text, patient.medications)
         chosen_medication = extracted or (patient.medications[0] if patient.medications else "")
 
-    assessment = assess_symptoms(user_text=symptom_text, medications=patient.medications)
+    assessment = assess_symptoms(
+        user_text=symptom_text,
+        medications=patient.medications,
+        conditions=patient.conditions,
+    )
 
     mcp_profile, matched_variant = _lookup_mcp_with_variants(chosen_medication) if chosen_medication else (None, None)
     fallback_profile = _lookup_mock_with_variants(chosen_medication) if chosen_medication else None
@@ -410,7 +424,11 @@ async def chat_stream(patient_id: str, user_message: str) -> AsyncIterator[str]:
     add_chat_message(patient.id, "user", user_message)
 
     yield await _emit("tool_call", "assess_symptoms")
-    assessment = assess_symptoms(user_text=user_message, medications=patient.medications)
+    assessment = assess_symptoms(
+        user_text=user_message,
+        medications=patient.medications,
+        conditions=patient.conditions,
+    )
     patient.latest_assessment = assessment
     upsert_patient(patient)
     print(f"UPDATING ASSESSMENT: {assessment}")

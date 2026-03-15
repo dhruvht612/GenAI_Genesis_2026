@@ -28,6 +28,10 @@ export default function PatientDoctorReport() {
   const reportKey = patientId ? `mediguard_latest_report_${patientId}` : 'mediguard_latest_report';
   const [latestReport, setLatestReport] = useState(patientId ? (localStorage.getItem(reportKey) || '') : '');
   const [patientProfile, setPatientProfile] = useState(null);
+  const [doctorMessages, setDoctorMessages] = useState([]);
+  const [reply, setReply] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
+  const [replyStatus, setReplyStatus] = useState('');
 
   useEffect(() => {
     if (!patientId) return;
@@ -60,6 +64,58 @@ export default function PatientDoctorReport() {
     fetchProfile();
     fetchReport();
   }, [patientId, reportKey]);
+
+  useEffect(() => {
+    if (!patientId) return;
+
+    let mounted = true;
+    const loadMessages = async () => {
+      try {
+        const res = await fetch(`${API}/patient/${patientId}/messages`);
+        const data = await res.json();
+        if (!res.ok) return;
+        if (mounted) {
+          setDoctorMessages(data.messages || []);
+        }
+      } catch {
+        // keep current messages
+      }
+    };
+
+    loadMessages();
+    const timer = setInterval(loadMessages, 5000);
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
+  }, [patientId]);
+
+  const sendReply = async () => {
+    if (!patientId || !reply.trim()) return;
+    setSendingReply(true);
+    setReplyStatus('');
+
+    try {
+      const res = await fetch(`${API}/patient/${patientId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: reply.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.detail || 'Failed to send reply');
+
+      setReply('');
+      setReplyStatus('Message sent to your doctor');
+
+      const refreshRes = await fetch(`${API}/patient/${patientId}/messages`);
+      const refreshData = await refreshRes.json();
+      if (refreshRes.ok) setDoctorMessages(refreshData.messages || []);
+    } catch {
+      setReplyStatus('Could not send message');
+    } finally {
+      setSendingReply(false);
+    }
+  };
 
   const displayName = patientProfile?.name || sessionStorage.getItem('mediguard_displayName') || 'Patient';
   const displayId = patientProfile?.patient_id || sessionStorage.getItem('mediguard_user_id') || 'N/A';
@@ -148,6 +204,34 @@ export default function PatientDoctorReport() {
           ) : (
             <p className="report-ai-intro">No backend-generated report found yet. Trigger a high-severity check-in from AI Check-In to generate one.</p>
           )}
+        </div>
+        <div className="dashboard-card report-card report-live-output" style={{ gridColumn: '1 / -1' }}>
+          <h3 className="report-card-title">💬 Care Team Messages</h3>
+          {doctorMessages.length === 0 ? (
+            <p className="report-ai-intro">No messages from your doctor yet.</p>
+          ) : (
+            <ul className="patient-thread-list">
+              {doctorMessages.map((m) => (
+                <li key={m.message_id} className={`patient-thread-item ${m.sender_role === 'doctor' ? 'patient-thread-item-doctor' : 'patient-thread-item-patient'}`}>
+                  <span className="patient-thread-meta">{m.sender_role === 'doctor' ? 'Doctor' : 'You'} · {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span>{m.message}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="patient-thread-compose">
+            <textarea
+              className="reports-message-input"
+              placeholder="Reply to your doctor..."
+              rows={3}
+              value={reply}
+              onChange={(e) => setReply(e.target.value)}
+            />
+            <button type="button" className="btn-report btn-report-primary" onClick={sendReply} disabled={sendingReply || !reply.trim()}>
+              {sendingReply ? 'Sending...' : 'Send Reply'}
+            </button>
+            {replyStatus && <p className="patient-thread-status">{replyStatus}</p>}
+          </div>
         </div>
       </div>
     </div>
