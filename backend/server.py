@@ -20,6 +20,7 @@ app.add_middleware(
 
 
 class SetupRequest(BaseModel):
+    user_id: str | None = Field(default=None, examples=["MJ-2024"])
     name: str = Field(..., examples=["Maria Chen"])
     age: int = Field(..., ge=0, le=120)
     conditions: list[str] = Field(default_factory=list)

@@ -57,7 +57,7 @@ def _gemini_response(
     pharmacy_context: str | None = None,
 ) -> str | None:
     api_key = os.getenv("GOOGLE_API_KEY")
-    model = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+    model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
     if not api_key:
         return None
 
@@ -140,7 +140,7 @@ def _build_profile(medication_name: str) -> MedicationProfile:
 
 
 def setup_patient(payload: dict) -> PatientRecord:
-    patient_id = str(uuid.uuid4())
+    patient_id = payload.get("user_id", str(uuid.uuid4()))
     medications = payload.get("medications", [])
     profiles = [_build_profile(m) for m in medications]
 
