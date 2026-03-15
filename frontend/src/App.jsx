@@ -14,6 +14,8 @@ import DoctorOverview from './pages/doctor/DoctorOverview';
 import DoctorPatients from './pages/doctor/DoctorPatients';
 import DoctorAIInsights from './pages/doctor/DoctorAIInsights';
 import DoctorReports from './pages/doctor/DoctorReports';
+import DoctorSettings from './pages/doctor/DoctorSettings';
+import DoctorProfile from './pages/doctor/DoctorProfile';
 import './App.css';
 
 export default function App() {
@@ -36,6 +38,8 @@ export default function App() {
             <Route path="patients" element={<DoctorPatients />} />
             <Route path="insights" element={<DoctorAIInsights />} />
             <Route path="reports" element={<DoctorReports />} />
+            <Route path="settings" element={<DoctorSettings />} />
+            <Route path="profile" element={<DoctorProfile />} />
           </Route>
         </Route>
       </Routes>

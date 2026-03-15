@@ -485,6 +485,7 @@ def get_user(user_id: str) -> dict[str, Any] | None:
         "role": row["role"],
         "email": row["email"],
         "display_name": row["display_name"],
+        "created_at": row["created_at"],
     }
 
 

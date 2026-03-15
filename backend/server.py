@@ -322,6 +322,19 @@ def doctor_overview(doctor_id: str) -> dict:
     return get_doctor_overview(doctor_id)
 
 
+@app.get("/doctor/{doctor_id}/profile")
+def doctor_profile(doctor_id: str) -> dict:
+    user = get_user(doctor_id)
+    if not user or user["role"] != "doctor":
+        raise HTTPException(status_code=404, detail="Doctor not found")
+    return {
+        "doctor_id": user["user_id"],
+        "email": user["email"],
+        "display_name": user["display_name"],
+        "created_at": user.get("created_at") if user else None,
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
 
