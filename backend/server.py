@@ -17,12 +17,13 @@ from agent import (
 from storage import (
     authenticate_user,
     create_user,
-    get_patient_metadata,
     get_patient,
+    get_patient_metadata,
     get_user,
     initialize_db,
     list_patients_by_doctor,
     list_reports_for_doctor,
+    set_patient_metadata,
     update_patient_medications,
 )
 
@@ -46,6 +47,13 @@ class SetupRequest(BaseModel):
     age: int = Field(..., ge=0, le=120)
     conditions: list[str] = Field(default_factory=list)
     medications: list[str] = Field(default_factory=list)
+    # Profile fields from signup / profile edit (contact & address)
+    email: str | None = None
+    phone: str | None = None
+    address: str | None = None
+    city: str | None = None
+    province: str | None = None
+    postal_code: str | None = None
 
 
 class ChatRequest(BaseModel):
@@ -122,6 +130,41 @@ def login(payload: LoginRequest) -> dict:
 @app.post("/setup")
 def setup(payload: SetupRequest) -> dict:
     record = setup_patient(payload.model_dump())
+    # Save profile (contact & address) from signup/profile edit so doctors can see it
+    if any(
+        getattr(payload, f, None)
+        for f in ("email", "phone", "address", "city", "province", "postal_code")
+    ):
+        existing = get_patient_metadata(record.id)
+        contact = dict(existing.get("contact") or {})
+        if payload.email is not None:
+            contact["email"] = payload.email.strip() or contact.get("email")
+        if payload.phone is not None:
+            contact["phone"] = payload.phone.strip() or contact.get("phone")
+        if payload.address is not None:
+            contact["address"] = payload.address.strip() or contact.get("address")
+        if payload.city is not None:
+            contact["city"] = payload.city.strip() or contact.get("city")
+        if payload.province is not None:
+            contact["province"] = payload.province.strip() or contact.get("province")
+        if payload.postal_code is not None:
+            contact["postal_code"] = payload.postal_code.strip() or contact.get("postal_code")
+        parts = [
+            contact.get("address"),
+            contact.get("city"),
+            (contact.get("province") or "") + " " + (contact.get("postal_code") or "").strip(),
+        ]
+        location = ", ".join(p for p in parts if p and str(p).strip()) or existing.get("location")
+        set_patient_metadata(
+            patient_id=record.id,
+            date_of_birth=existing.get("date_of_birth"),
+            blood_type=existing.get("blood_type"),
+            allergies=existing.get("allergies") or [],
+            contact=contact,
+            location=location,
+            medication_plan=existing.get("medication_plan") or [],
+            symptoms_log=existing.get("symptoms_log") or [],
+        )
     return {
         "patient_id": record.id,
         "name": record.name,
@@ -148,25 +191,6 @@ async def chat(payload: ChatRequest) -> StreamingResponse:
 async def proactive_checkin(patient_id: str) -> StreamingResponse:
     stream = proactive_checkin_stream(patient_id)
     return StreamingResponse(stream, media_type="text/event-stream")
-
-
-@app.get("/patient/{patient_id}")
-def get_patient_profile(patient_id: str) -> dict:
-    """Get patient profile for editing (name, age, conditions, medications)."""
-    patient = PATIENTS.get(patient_id) or get_patient(patient_id)
-    if not patient:
-        raise HTTPException(status_code=404, detail="Patient not found")
-    return {
-        "patient_id": patient.id,
-        "name": patient.name,
-        "age": patient.age,
-        "conditions": patient.conditions,
-        "medications": patient.medications,
-        "profiles": [
-            {"name": p.name, "dosage": p.dosage, "schedule": p.schedule}
-            for p in patient.profiles
-        ],
-    }
 
 
 @app.get("/report/{patient_id}")

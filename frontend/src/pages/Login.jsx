@@ -64,6 +64,12 @@ export default function Login() {
               age: 0,
               conditions: [],
               medications: Array.isArray(pending.medications) ? pending.medications : [],
+              email: data.email || undefined,
+              phone: pending.phone || undefined,
+              address: pending.address || undefined,
+              city: pending.city || undefined,
+              province: pending.province || undefined,
+              postal_code: pending.postalCode || undefined,
             }),
           });
         } catch (_) {}
@@ -75,7 +81,7 @@ export default function Login() {
         if (pending.postalCode != null) sessionStorage.setItem('mediguard_postalCode', pending.postalCode);
         clearPendingProfile();
       } else if (data.role === 'patient') {
-        // Ensure patient has a record so they appear on the doctor dashboard
+        // Ensure patient has a record so they appear on the doctor dashboard; sync profile from session if present
         try {
           const checkRes = await fetch(`${API}/patient/${data.user_id}`);
           if (checkRes.status === 404) {
@@ -89,6 +95,12 @@ export default function Login() {
                 age: 0,
                 conditions: [],
                 medications: [],
+                email: data.email || undefined,
+                phone: sessionStorage.getItem('mediguard_phone') || undefined,
+                address: sessionStorage.getItem('mediguard_address') || undefined,
+                city: sessionStorage.getItem('mediguard_city') || undefined,
+                province: sessionStorage.getItem('mediguard_province') || undefined,
+                postal_code: sessionStorage.getItem('mediguard_postalCode') || undefined,
               }),
             });
           }

@@ -182,6 +182,10 @@
   background: rgba(0, 0, 0, 0.02);
 }
 
+.doctor-patients-row-clickable {
+  cursor: pointer;
+}
+
 .patient-cell {
   display: flex;
   align-items: center;
@@ -330,10 +334,200 @@
   color: var(--secondary);
 }
 
+/* Patient detail modal */
+.patient-detail-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+.patient-detail-modal {
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  max-width: 520px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.patient-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.patient-detail-title {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  margin: 0;
+  color: var(--text);
+}
+
+.patient-detail-close {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: var(--border);
+  border-radius: var(--radius);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.patient-detail-close:hover {
+  background: var(--text-muted);
+  color: white;
+}
+
+.patient-detail-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+.patient-detail-loading,
+.patient-detail-error {
+  padding: 2rem 1.5rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.patient-detail-error {
+  color: var(--danger);
+}
+
+.patient-detail-hero {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.patient-detail-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--secondary);
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.patient-detail-name {
+  font-size: 1.2rem;
+  margin: 0 0 0.25rem 0;
+  color: var(--text);
+}
+
+.patient-detail-meta {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.patient-detail-risk {
+  margin: 0.5rem 0 0 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.patient-detail-section {
+  margin-bottom: 1.25rem;
+}
+
+.patient-detail-section:last-child {
+  margin-bottom: 0;
+}
+
+.patient-detail-section-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin: 0 0 0.5rem 0;
+}
+
+.patient-detail-tags {
+  margin: 0;
+}
+
+.patient-detail-list {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.patient-detail-list li {
+  margin-bottom: 0.35rem;
+  font-size: 0.95rem;
+}
+
+.patient-detail-list-none {
+  list-style: none;
+  padding-left: 0;
+  color: var(--text-muted);
+}
+
+.patient-detail-contact {
+  list-style: none;
+  padding-left: 0;
+}
+
+.patient-detail-profile-block {
+  margin: 0;
+}
+
+.patient-detail-profile-line {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.patient-detail-profile-line:last-child {
+  margin-bottom: 0;
+}
+
+.patient-detail-address {
+  line-height: 1.4;
+}
+
+.patient-detail-text {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
 @media (max-width: 768px) {
   .doctor-patients-table th,
   .doctor-patients-table td {
     padding: 0.65rem 0.5rem;
     font-size: 0.85rem;
+  }
+
+  .patient-detail-overlay {
+    padding: 0.75rem;
+  }
+
+  .patient-detail-modal {
+    max-height: 85vh;
   }
 }

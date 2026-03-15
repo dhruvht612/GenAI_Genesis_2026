@@ -12,6 +12,9 @@ export default function DoctorPatients() {
   const [search, setSearch] = useState('');
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedPatientId, setSelectedPatientId] = useState(null);
+  const [patientDetail, setPatientDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const loadPatients = useCallback(async () => {
     const doctorId = sessionStorage.getItem('mediguard_user_id');
@@ -40,6 +43,35 @@ export default function DoctorPatients() {
   useEffect(() => {
     loadPatients();
   }, [loadPatients]);
+
+  useEffect(() => {
+    if (!selectedPatientId) {
+      setPatientDetail(null);
+      return;
+    }
+    let cancelled = false;
+    setDetailLoading(true);
+    fetch(`${API}/patient/${selectedPatientId}`)
+      .then((res) => {
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then((data) => {
+        if (!cancelled) setPatientDetail(data);
+      })
+      .catch(() => {
+        if (!cancelled) setPatientDetail(null);
+      })
+      .finally(() => {
+        if (!cancelled) setDetailLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [selectedPatientId]);
+
+  const closeDetail = useCallback(() => {
+    setSelectedPatientId(null);
+    setPatientDetail(null);
+  }, []);
 
   const filtered = useMemo(() => patients.filter((p) => {
     const conditions = ensureArray(p.conditions);
@@ -125,7 +157,15 @@ export default function DoctorPatients() {
                 const medications = ensureArray(p.medications);
                 const risk = p.risk || 'low';
                 return (
-                  <tr key={p.patient_id}>
+                  <tr
+                    key={p.patient_id}
+                    className="doctor-patients-row-clickable"
+                    onClick={() => setSelectedPatientId(p.patient_id)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedPatientId(p.patient_id); } }}
+                    aria-label={`View profile for ${p.name || 'Patient'}`}
+                  >
                     <td>
                       <div className="patient-cell">
                         <span className="patient-cell-avatar">{initialsFrom(p.name)}</span>
@@ -176,7 +216,7 @@ export default function DoctorPatients() {
                         </div>
                       </div>
                     </td>
-                    <td><button type="button" className="row-arrow" aria-label="View">→</button></td>
+                    <td><button type="button" className="row-arrow" aria-label="View profile" onClick={(e) => { e.stopPropagation(); setSelectedPatientId(p.patient_id); }}>→</button></td>
                   </tr>
                 );
               })}
@@ -184,6 +224,124 @@ export default function DoctorPatients() {
           </table>
         )}
       </div>
+
+      {selectedPatientId && (
+        <div className="patient-detail-overlay" onClick={closeDetail} role="dialog" aria-modal="true" aria-labelledby="patient-detail-title">
+          <div className="patient-detail-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="patient-detail-header">
+              <h2 id="patient-detail-title" className="patient-detail-title">Patient Profile</h2>
+              <button type="button" className="patient-detail-close" onClick={closeDetail} aria-label="Close">×</button>
+            </div>
+            {detailLoading ? (
+              <div className="patient-detail-loading">Loading profile…</div>
+            ) : patientDetail ? (
+              <div className="patient-detail-body">
+                <div className="patient-detail-hero">
+                  <span className="patient-detail-avatar">{initialsFrom(patientDetail.name)}</span>
+                  <div>
+                    <h3 className="patient-detail-name">{patientDetail.name || '—'}</h3>
+                    <p className="patient-detail-meta">Patient ID: #{patientDetail.patient_id}</p>
+                    <p className="patient-detail-meta">{patientDetail.age != null ? `${patientDetail.age} years old` : '—'}</p>
+                    <p className="patient-detail-risk">
+                      <span className={`risk-dot risk-dot-${patientDetail.latest_assessment?.urgency || 'low'}`} />
+                      Risk: {(patientDetail.latest_assessment?.urgency || 'low').charAt(0).toUpperCase() + (patientDetail.latest_assessment?.urgency || 'low').slice(1)}
+                    </p>
+                  </div>
+                </div>
+
+                <section className="patient-detail-section">
+                  <h4 className="patient-detail-section-title">Conditions</h4>
+                  <div className="patient-detail-tags conditions-tags">
+                    {ensureArray(patientDetail.conditions).length === 0 ? (
+                      <span className="condition-tag condition-tag-none">None listed</span>
+                    ) : (
+                      ensureArray(patientDetail.conditions).map((c) => (
+                        <span key={String(c)} className="condition-tag">{c}</span>
+                      ))
+                    )}
+                  </div>
+                </section>
+
+                <section className="patient-detail-section">
+                  <h4 className="patient-detail-section-title">Medications</h4>
+                  <ul className="patient-detail-list">
+                    {ensureArray(patientDetail.medications).length === 0 ? (
+                      <li className="patient-detail-list-none">None listed</li>
+                    ) : (
+                      ensureArray(patientDetail.medications).map((m) => (
+                        <li key={String(m)}>{m}</li>
+                      ))
+                    )}
+                  </ul>
+                </section>
+
+                {(patientDetail.metadata?.contact && (patientDetail.metadata.contact.email || patientDetail.metadata.contact.phone || patientDetail.metadata.contact.address || patientDetail.metadata.contact.city)) && (
+                  <section className="patient-detail-section">
+                    <h4 className="patient-detail-section-title">Profile (from their account)</h4>
+                    <div className="patient-detail-profile-block">
+                      {patientDetail.metadata.contact.email && (
+                        <p className="patient-detail-profile-line">✉ {patientDetail.metadata.contact.email}</p>
+                      )}
+                      {patientDetail.metadata.contact.phone && (
+                        <p className="patient-detail-profile-line">📞 {patientDetail.metadata.contact.phone}</p>
+                      )}
+                      {(patientDetail.metadata.contact.address || patientDetail.metadata.contact.city || patientDetail.metadata.contact.province || patientDetail.metadata.contact.postal_code) && (
+                        <p className="patient-detail-profile-line patient-detail-address">
+                          📍 {[patientDetail.metadata.contact.address, patientDetail.metadata.contact.city, [patientDetail.metadata.contact.province, patientDetail.metadata.contact.postal_code].filter(Boolean).join(' ')].filter(Boolean).join(', ')}
+                        </p>
+                      )}
+                    </div>
+                  </section>
+                )}
+
+                {patientDetail.metadata?.location && !(patientDetail.metadata?.contact?.address || patientDetail.metadata?.contact?.city) && (
+                  <section className="patient-detail-section">
+                    <h4 className="patient-detail-section-title">Location</h4>
+                    <p className="patient-detail-text">{patientDetail.metadata.location}</p>
+                  </section>
+                )}
+
+                {patientDetail.metadata?.date_of_birth && (
+                  <section className="patient-detail-section">
+                    <h4 className="patient-detail-section-title">Date of birth</h4>
+                    <p className="patient-detail-text">{patientDetail.metadata.date_of_birth}</p>
+                  </section>
+                )}
+
+                {patientDetail.metadata?.blood_type && (
+                  <section className="patient-detail-section">
+                    <h4 className="patient-detail-section-title">Blood type</h4>
+                    <p className="patient-detail-text">{patientDetail.metadata.blood_type}</p>
+                  </section>
+                )}
+
+                {patientDetail.metadata?.allergies && patientDetail.metadata.allergies.length > 0 && (
+                  <section className="patient-detail-section">
+                    <h4 className="patient-detail-section-title">Allergies</h4>
+                    <div className="patient-detail-tags conditions-tags">
+                      {patientDetail.metadata.allergies.map((a) => (
+                        <span key={String(a)} className="condition-tag" style={{ background: 'rgba(239, 68, 68, 0.12)', color: '#b91c1c' }}>{a}</span>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                <section className="patient-detail-section">
+                  <h4 className="patient-detail-section-title">Status</h4>
+                  <p className="patient-detail-text">
+                    {patientDetail.has_report ? '✓ AI report generated' : 'No AI report yet'}
+                    {patientDetail.latest_assessment && (
+                      <span> · Last check-in: {patientDetail.latest_assessment.urgency || 'completed'}</span>
+                    )}
+                  </p>
+                </section>
+              </div>
+            ) : (
+              <div className="patient-detail-error">Could not load profile.</div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

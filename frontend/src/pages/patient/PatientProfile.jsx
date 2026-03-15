@@ -91,6 +91,12 @@ export default function PatientProfile() {
           age: age.trim() ? parseInt(age, 10) : 0,
           conditions: primaryCondition ? [primaryCondition] : [],
           medications: medications.filter(Boolean),
+          email: sessionStorage.getItem('mediguard_email') || undefined,
+          phone: phone.trim() || undefined,
+          address: address.trim() || undefined,
+          city: city.trim() || undefined,
+          province: province.trim() || undefined,
+          postal_code: postalCode.trim() || undefined,
         }),
       });
       if (!res.ok) throw new Error('Failed to save');
