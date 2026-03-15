@@ -1,9 +1,11 @@
 import { useEffect } from 'react';
 import { useNavigate, Outlet, NavLink } from 'react-router-dom';
+import { useTheme } from '../../contexts/ThemeContext';
 import '../Dashboard.css';
 
 export default function DoctorDashboard() {
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
   const role = sessionStorage.getItem('mediguard_role');
   const email = sessionStorage.getItem('mediguard_email');
 
@@ -12,6 +14,13 @@ export default function DoctorDashboard() {
       navigate('/login', { replace: true });
     }
   }, [role, email, navigate]);
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('mediguard_role');
+    sessionStorage.removeItem('mediguard_email');
+    sessionStorage.removeItem('mediguard_displayName');
+    navigate('/login');
+  };
 
   if (role !== 'doctor' || !email) return null;
 
@@ -46,7 +55,7 @@ export default function DoctorDashboard() {
               <span className="doctor-avatar">DR</span>
               <div className="doctor-profile-info">
                 <span className="doctor-name">Dr. Smith</span>
-                <button type="button" className="doctor-logout-link" onClick={() => navigate('/login')}>Log out</button>
+                <button type="button" className="doctor-logout-link" onClick={handleLogout}>Log out</button>
               </div>
             </div>
           </div>
@@ -64,6 +73,7 @@ export default function DoctorDashboard() {
               <span className="doctor-search-icon" aria-hidden>🔍</span>
               <input type="search" className="doctor-search" placeholder="Search patients..." aria-label="Search patients" />
             </div>
+            <button type="button" className="doctor-notifications theme-toggle-btn" onClick={() => setTheme((t) => (t === 'light' ? 'dark' : 'light'))} title={theme === 'light' ? 'Dark mode' : 'Light mode'} aria-label="Toggle theme">{theme === 'light' ? '🌙' : '☀️'}</button>
             <button type="button" className="doctor-notifications" aria-label="Notifications">🔔</button>
           </header>
           <div className="doctor-content">

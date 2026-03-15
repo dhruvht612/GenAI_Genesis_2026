@@ -198,6 +198,82 @@
   font-weight: 600;
 }
 
+/* When RoleSelector / demo buttons are inside the royal blue auth card */
+.auth-card-extra .role-selector {
+  gap: 0.5rem;
+}
+.auth-card-extra .role-card {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+}
+.auth-card-extra .role-card:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+}
+.auth-card-extra .role-card-active.role-card-patient {
+  border-color: rgb(96, 165, 250);
+  background: rgba(59, 130, 246, 0.2);
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.5);
+}
+.auth-card-extra .role-card-active.role-card-doctor {
+  border-color: rgb(129, 140, 248);
+  background: rgba(99, 102, 241, 0.2);
+  box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.5);
+}
+.auth-card-extra .demo-buttons {
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+.auth-card-extra .demo-label {
+  color: rgba(255, 255, 255, 0.7);
+}
+.auth-card-extra .demo-btn-patient {
+  background: rgba(59, 130, 246, 0.2);
+  color: rgb(147, 197, 253);
+  border-color: rgb(96, 165, 250);
+}
+.auth-card-extra .demo-btn-patient:hover {
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+.auth-card-extra .demo-btn-doctor {
+  background: rgba(99, 102, 241, 0.2);
+  color: rgb(165, 180, 252);
+  border-color: rgb(129, 140, 248);
+}
+.auth-card-extra .demo-btn-doctor:hover {
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+.auth-card-extra .medication-tag-input {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.auth-card-extra .medication-tag-input:focus-within {
+  border-color: rgba(96, 165, 250, 0.6);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+.auth-card-extra .tag {
+  background: rgba(59, 130, 246, 0.2);
+  color: rgb(147, 197, 253);
+}
+.auth-card-extra .tag-remove {
+  color: rgb(147, 197, 253);
+}
+.auth-card-extra .tag-input {
+  background: transparent;
+  color: white;
+}
+.auth-card-extra .tag-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+.auth-card-success {
+  padding: 0.5rem 0.75rem;
+  background: rgba(34, 197, 94, 0.2);
+  color: rgb(134, 239, 172);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
 @media (max-width: 768px) {
   .auth-split {
     grid-template-columns: 1fr;

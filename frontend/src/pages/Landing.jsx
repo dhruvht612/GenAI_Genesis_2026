@@ -20,41 +20,47 @@ export default function Landing() {
 
   return (
     <div className="landing page-enter">
-      <section className="hero">
-        <div className="hero-content">
-          <h1 className="hero-headline">
-            Your medications, <em>proactively</em> managed.
-          </h1>
-          <p className="hero-sub">
-            MediGuard reaches out to you at the exact moment side effects are likely — not after. Powered by agentic AI, built for Canadians.
-          </p>
-          <div className="hero-ctas">
-            <button type="button" className="btn btn-primary" onClick={() => navigate('/signup')}>
-              Get Started Free
-            </button>
-            <button type="button" className="btn btn-secondary" onClick={() => navigate('/signup')}>
-              For Doctors
-            </button>
-          </div>
-        </div>
-        <div className="hero-mockup">
-          <div className="mockup-card mockup-float">
-            <div className="mockup-header">Check-in</div>
-            <div className="mockup-message">
-              <span className="mockup-avatar">AI</span>
-              <p>Hi Maria, how are you feeling today? Any dizziness, fatigue, or other changes since starting your medications?</p>
+      <div className="hero-wrap">
+        <div className="hero-inner w-full max-w-[1200px] mx-auto px-4">
+          <section className="hero">
+            <div className="hero-content">
+              <h1 className="hero-headline">
+                Your medications, <em>proactively</em> managed.
+              </h1>
+              <p className="hero-sub">
+                MediGuard reaches out to you at the exact moment side effects are likely — not after. Powered by agentic AI, built for Canadians.
+              </p>
+              <div className="hero-ctas">
+                <button type="button" className="btn btn-primary" onClick={() => navigate('/signup')}>
+                  Get Started Free
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={() => navigate('/signup')}>
+                  For Doctors
+                </button>
+              </div>
             </div>
-            <div className="mockup-tools">
-              <span className="tool-badge">PharmacyMCP</span>
-              <span className="tool-badge">SideEffectWindow</span>
-              <span className="tool-badge">ReportGen</span>
+            <div className="hero-mockup">
+              <div className="mockup-card mockup-float">
+                <div className="mockup-header">Check-in</div>
+                <div className="mockup-message">
+                  <span className="mockup-avatar">AI</span>
+                  <p>Hi Maria, how are you feeling today? Any dizziness, fatigue, or other changes since starting your medications?</p>
+                </div>
+                <div className="mockup-tools">
+                  <span className="tool-badge">PharmacyMCP</span>
+                  <span className="tool-badge">SideEffectWindow</span>
+                  <span className="tool-badge">ReportGen</span>
+                </div>
+              </div>
+              <div className="stat-badge stat-badge-1">58% miss side effects</div>
+              <div className="stat-badge stat-badge-2">3 tool calls</div>
             </div>
-          </div>
-          <div className="stat-badge stat-badge-1">58% miss side effects</div>
-          <div className="stat-badge stat-badge-2">3 tool calls</div>
+          </section>
         </div>
-      </section>
+      </div>
 
+      <div className="landing-below-hero">
+      <div className="landing-container">
       <section className="stats-strip" ref={statsRef}>
         <div className="stats-inner">
           <div className="stat-item">
@@ -160,6 +166,8 @@ export default function Landing() {
         <p className="footer-copy">© {new Date().getFullYear()} MediGuard. Built in 12 hours · Sun Life Hackathon</p>
         <span className="footer-badge">Built in 12 hours · Sun Life Hackathon</span>
       </footer>
+      </div>
+      </div>
     </div>
   );
 }

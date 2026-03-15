@@ -628,7 +628,7 @@
 .doctor-content {
   flex: 1;
   padding: 1.5rem;
-  overflow-auto;
+  overflow: auto;
 }
 
 .doctor-page {

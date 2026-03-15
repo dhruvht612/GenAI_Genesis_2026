@@ -1,17 +1,43 @@
 .landing {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1.5rem;
+  width: 100%;
+  min-height: 100vh;
 }
 
-/* Hero */
+.landing-below-hero {
+  width: 100%;
+  background: var(--bg);
+  min-height: 100vh;
+}
+
+.landing-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.hero-inner {
+  width: 100%;
+}
+
+/* Hero — solid royal blue, full viewport */
+.hero-wrap {
+  width: 100%;
+  min-height: 100vh;
+  background: #1e40af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .hero {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 3rem;
   align-items: center;
-  padding: 4rem 0 5rem;
-  min-height: 70vh;
+  padding: 4rem 1.5rem 5rem;
+  min-height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .hero-headline {
@@ -19,16 +45,17 @@
   font-size: clamp(2rem, 4vw, 3.25rem);
   line-height: 1.15;
   margin-bottom: 1.25rem;
+  color: #fff;
 }
 
 .hero-headline em {
   font-style: italic;
-  color: var(--primary);
+  color: #93c5fd;
 }
 
 .hero-sub {
   font-size: 1.15rem;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.9);
   margin-bottom: 2rem;
   max-width: 32ch;
 }
@@ -86,7 +113,7 @@
 }
 
 .btn-outline-white:hover {
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.15);
   text-decoration: none;
 }
 
@@ -162,8 +189,8 @@
   font-family: var(--font-mono);
   font-size: 0.7rem;
   padding: 0.25rem 0.5rem;
-  background: rgba(27, 184, 106, 0.12);
-  color: var(--primary);
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
   border-radius: 6px;
 }
 
@@ -182,13 +209,14 @@
 .stat-badge-1 { top: 10%; right: 0; animation-delay: 0.5s; }
 .stat-badge-2 { bottom: 20%; left: 0; animation-delay: 1s; }
 
-/* Stats strip */
+/* Stats strip — modern cards */
 .stats-strip {
   background: var(--card-bg);
   border-radius: var(--radius-lg);
   padding: 2rem;
   margin-bottom: 4rem;
   box-shadow: var(--shadow);
+  border: 1px solid var(--border);
 }
 
 .stats-inner {
@@ -226,6 +254,8 @@
 .how-it-works h2 {
   text-align: center;
   margin-bottom: 2.5rem;
+  color: var(--text);
+  font-size: clamp(1.5rem, 3vw, 2rem);
 }
 
 .steps {
@@ -240,7 +270,7 @@
   padding: 2rem;
   box-shadow: var(--shadow);
   border: 1px solid var(--border);
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
   animation: stepReveal 0.5s ease-out backwards;
 }
 
@@ -257,7 +287,8 @@
 
 .step-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 28px rgba(0,0,0,0.12);
+  box-shadow: 0 12px 32px rgba(37, 99, 235, 0.15);
+  border-color: var(--primary);
 }
 
 .step-num {
@@ -276,6 +307,7 @@
 
 .step-card h3 {
   margin-bottom: 0.5rem;
+  color: var(--text);
 }
 
 .step-card p {
@@ -293,6 +325,8 @@
 .dual-view h2 {
   text-align: center;
   margin-bottom: 2rem;
+  color: var(--text);
+  font-size: clamp(1.5rem, 3vw, 2rem);
 }
 
 .dual-cards {
@@ -322,7 +356,7 @@
 }
 
 .view-doctor .view-card-header {
-  background: linear-gradient(135deg, var(--secondary), #9b7dd4);
+  background: var(--secondary);
 }
 
 .view-card ul {
@@ -337,6 +371,7 @@
   gap: 0.75rem;
   padding: 0.5rem 0;
   font-size: 0.95rem;
+  color: var(--text);
 }
 
 .view-icon {
@@ -351,6 +386,8 @@
 .testimonials h2 {
   text-align: center;
   margin-bottom: 2rem;
+  color: var(--text);
+  font-size: clamp(1.5rem, 3vw, 2rem);
 }
 
 .testimonial-cards {
@@ -365,6 +402,12 @@
   padding: 1.5rem;
   box-shadow: var(--shadow);
   border: 1px solid var(--border);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.testimonial-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 8px 24px var(--primary-glow);
 }
 
 .testimonial-card blockquote {
@@ -380,12 +423,13 @@
   font-style: normal;
 }
 
-/* CTA banner */
+/* CTA banner — royal blue solid */
 .cta-banner {
-  background: linear-gradient(135deg, var(--primary), #17a05e);
+  background: var(--primary);
   border-radius: var(--radius-xl);
   padding: 3rem 2rem;
   margin: 4rem 0;
+  box-shadow: var(--shadow);
 }
 
 .cta-inner {
@@ -395,7 +439,7 @@
 }
 
 .cta-banner h2 {
-  color: white;
+  color: #fff;
   margin-bottom: 1.5rem;
   font-size: clamp(1.25rem, 2.5vw, 1.75rem);
 }

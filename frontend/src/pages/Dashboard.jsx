@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate, Outlet, NavLink } from 'react-router-dom';
+import { useTheme } from '../contexts/ThemeContext';
 import './Dashboard.css';
 
 export default function Dashboard() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
   const stateRole = location.state?.role;
   const stateEmail = location.state?.email;
   const role = stateRole || sessionStorage.getItem('mediguard_role') || 'patient';
@@ -26,6 +28,13 @@ export default function Dashboard() {
       navigate('/doctor', { replace: true });
     }
   }, [role, navigate]);
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('mediguard_role');
+    sessionStorage.removeItem('mediguard_email');
+    sessionStorage.removeItem('mediguard_displayName');
+    navigate('/login');
+  };
 
   if (!role || !email) return null;
   if (role === 'doctor') return null;
@@ -78,8 +87,9 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="patient-topbar-actions">
+                <button type="button" className="patient-topbar-btn theme-toggle-btn" onClick={() => setTheme((t) => (t === 'light' ? 'dark' : 'light'))} title={theme === 'light' ? 'Dark mode' : 'Light mode'} aria-label="Toggle theme">{theme === 'light' ? '🌙' : '☀️'}</button>
                 <button type="button" className="patient-topbar-btn" aria-label="Notifications">🔔</button>
-                <button type="button" className="patient-topbar-btn patient-topbar-logout" onClick={() => navigate('/login')}>
+                <button type="button" className="patient-topbar-btn patient-topbar-logout" onClick={handleLogout}>
                   Log out
                 </button>
               </div>
