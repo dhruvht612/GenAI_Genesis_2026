@@ -98,6 +98,46 @@ def initialize_db() -> None:
             password="demo123",
             display_name="Dr. Smith",
         )
+        _seed_demo_user(
+            conn,
+            user_id="PT-JK2025",
+            role="patient",
+            email="james.kim@demo.mediguard.ca",
+            password="demo123",
+            display_name="James Kim",
+        )
+        _seed_demo_user(
+            conn,
+            user_id="PT-SL2026",
+            role="patient",
+            email="sarah.lopez@demo.mediguard.ca",
+            password="demo123",
+            display_name="Sarah Lopez",
+        )
+        _seed_demo_user(
+            conn,
+            user_id="PT-DP2027",
+            role="patient",
+            email="david.park@demo.mediguard.ca",
+            password="demo123",
+            display_name="David Park",
+        )
+        _seed_demo_user(
+            conn,
+            user_id="PT-EW2028",
+            role="patient",
+            email="emily.watson@demo.mediguard.ca",
+            password="demo123",
+            display_name="Emily Watson",
+        )
+        _seed_demo_user(
+            conn,
+            user_id="PT-RS2029",
+            role="patient",
+            email="robert.singh@demo.mediguard.ca",
+            password="demo123",
+            display_name="Robert Singh",
+        )
         conn.commit()
 
     _seed_demo_patient_metadata()
@@ -178,6 +218,67 @@ def _seed_demo_patient_metadata() -> None:
         location="Toronto, ON",
         medication_plan=demo_medication_plan,
         symptoms_log=symptoms,
+    )
+
+    # Seed patient profiles so the doctor dashboard shows multiple patients (name, conditions, medications)
+    def _seed_patient(patient_id: str, name: str, age: int, conditions: list[str], medications: list[str]) -> None:
+        profiles = [
+            MedicationProfile(name=m, dosage="", schedule="", side_effect_windows={}, common_side_effects=[])
+            for m in medications
+        ]
+        record = PatientRecord(
+            id=patient_id,
+            name=name,
+            age=age,
+            assigned_doctor_id="DR-1001",
+            conditions=conditions,
+            medications=medications,
+            profiles=profiles,
+            created_at=datetime.now(UTC),
+        )
+        upsert_patient(record)
+
+    _seed_patient(
+        "MJ-2024",
+        "Maria Chen",
+        39,
+        ["Type 2 Diabetes", "Hypertension", "High Cholesterol"],
+        ["Lisinopril 10mg", "Metformin 500mg", "Atorvastatin 20mg"],
+    )
+    _seed_patient(
+        "PT-JK2025",
+        "James Kim",
+        52,
+        ["Asthma", "Seasonal Allergies"],
+        ["Albuterol inhaler", "Montelukast 10mg", "Fluticasone nasal spray"],
+    )
+    _seed_patient(
+        "PT-SL2026",
+        "Sarah Lopez",
+        61,
+        ["COPD", "Hypertension"],
+        ["Spiriva 18mcg", "Advair 250/50", "Amlodipine 5mg"],
+    )
+    _seed_patient(
+        "PT-DP2027",
+        "David Park",
+        68,
+        ["Heart Disease", "Atrial Fibrillation", "High Cholesterol"],
+        ["Lisinopril 20mg", "Metoprolol 50mg", "Atorvastatin 40mg", "Aspirin 81mg"],
+    )
+    _seed_patient(
+        "PT-EW2028",
+        "Emily Watson",
+        44,
+        ["Type 2 Diabetes"],
+        ["Metformin 1000mg", "Insulin glargine"],
+    )
+    _seed_patient(
+        "PT-RS2029",
+        "Robert Singh",
+        55,
+        ["Hypertension", "High Cholesterol"],
+        ["Amlodipine 10mg", "Atorvastatin 20mg", "Lisinopril 10mg"],
     )
 
 
@@ -484,23 +585,34 @@ def add_report_event(
 
 
 def list_patients_by_doctor(doctor_id: str) -> list[dict[str, Any]]:
+    """Return all patients who have a profile (name, conditions, medications). Includes every patient in the patients table so doctors see new signups."""
     with _connect() as conn:
         rows = conn.execute(
             """
             SELECT id, name, age, conditions_json, medications_json, latest_assessment_json, latest_report
             FROM patients
-            WHERE assigned_doctor_id = ?
             ORDER BY name ASC
-            """,
-            (doctor_id,),
+            """
         ).fetchall()
 
     output: list[dict[str, Any]] = []
     for row in rows:
         assessment = json.loads(row["latest_assessment_json"]) if row["latest_assessment_json"] else None
-        conditions = json.loads(row["conditions_json"])
-        medications = json.loads(row["medications_json"])
+        try:
+            conditions = json.loads(row["conditions_json"] or "[]")
+        except (TypeError, json.JSONDecodeError):
+            conditions = []
+        if not isinstance(conditions, list):
+            conditions = []
+        try:
+            medications = json.loads(row["medications_json"] or "[]")
+        except (TypeError, json.JSONDecodeError):
+            medications = []
+        if not isinstance(medications, list):
+            medications = []
         risk = (assessment or {}).get("urgency", "low")
+        if risk not in ("high", "medium", "low"):
+            risk = "low"
         output.append(
             {
                 "patient_id": row["id"],

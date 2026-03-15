@@ -49,15 +49,17 @@ export default function Login() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.detail || 'Login failed');
 
+      const displayName = data.display_name || 'Patient';
       const pending = data.role === 'patient' ? getPendingProfile() : null;
       if (pending) {
-        const name = pending.displayName || data.display_name;
+        const name = pending.displayName || displayName;
         try {
           await fetch(`${API}/setup`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               user_id: data.user_id,
+              assigned_doctor_id: 'DR-1001',
               name,
               age: 0,
               conditions: [],
@@ -72,9 +74,28 @@ export default function Login() {
         if (pending.province != null) sessionStorage.setItem('mediguard_province', pending.province);
         if (pending.postalCode != null) sessionStorage.setItem('mediguard_postalCode', pending.postalCode);
         clearPendingProfile();
+      } else if (data.role === 'patient') {
+        // Ensure patient has a record so they appear on the doctor dashboard
+        try {
+          const checkRes = await fetch(`${API}/patient/${data.user_id}`);
+          if (checkRes.status === 404) {
+            await fetch(`${API}/setup`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                user_id: data.user_id,
+                assigned_doctor_id: 'DR-1001',
+                name: displayName,
+                age: 0,
+                conditions: [],
+                medications: [],
+              }),
+            });
+          }
+        } catch (_) {}
       }
 
-      saveSession(data.role, data.email, data.user_id, pending?.displayName || data.display_name);
+      saveSession(data.role, data.email, data.user_id, pending?.displayName || displayName);
       navigate(data.role === 'doctor' ? '/doctor' : '/dashboard', { state: { role: data.role, email: data.email } });
     } catch (err) {
       setErrorMessage(err.message || 'Unable to log in');

@@ -86,6 +86,7 @@ export default function PatientProfile() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: userId,
+          assigned_doctor_id: sessionStorage.getItem('mediguard_assigned_doctor_id') || 'DR-1001',
           name: name.trim() || sessionDisplayName,
           age: age.trim() ? parseInt(age, 10) : 0,
           conditions: primaryCondition ? [primaryCondition] : [],
