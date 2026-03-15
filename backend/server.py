@@ -7,7 +7,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from agent import chat_stream, proactive_checkin_stream, setup_patient
+from agent import (
+    analyze_medication_case,
+    chat_stream,
+    proactive_checkin_stream,
+    setup_patient,
+    validate_patient_medications,
+)
 from storage import (
     authenticate_user,
     create_user,
@@ -63,6 +69,12 @@ class LoginRequest(BaseModel):
 
 class PatientMedicationsRequest(BaseModel):
     medications: list[str] = Field(default_factory=list)
+
+
+class MedicationAnalysisRequest(BaseModel):
+    symptom_text: str = Field(..., min_length=2)
+    medication_name: str | None = None
+    generate_report: bool = True
 
 
 @app.get("/health")
@@ -209,6 +221,27 @@ def update_medications(patient_id: str, payload: PatientMedicationsRequest) -> d
     if not ok:
         raise HTTPException(status_code=404, detail="Patient not found")
     return {"patient_id": patient_id, "medications": meds}
+
+
+@app.get("/patient/{patient_id}/medication-validation")
+def medication_validation(patient_id: str) -> dict:
+    try:
+        return validate_patient_medications(patient_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/patient/{patient_id}/medication-analysis")
+def medication_analysis(patient_id: str, payload: MedicationAnalysisRequest) -> dict:
+    try:
+        return analyze_medication_case(
+            patient_id,
+            payload.symptom_text,
+            payload.medication_name,
+            generate_report_now=payload.generate_report,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @app.get("/doctor/{doctor_id}/patients")

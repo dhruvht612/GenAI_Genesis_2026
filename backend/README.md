@@ -24,7 +24,7 @@
    - `LLM_PROVIDER=gemini`
    - `PHARMACY_MCP_ENABLED=true`
    - `GOOGLE_API_KEY=...`
-   - `GEMINI_MODEL=gemini-2.5-flash`
+   - `GEMINI_MODEL=gemini-3.1-flash-lite`
 
 If key/model is missing or fails, backend automatically falls back to mock rule-based response.
 
