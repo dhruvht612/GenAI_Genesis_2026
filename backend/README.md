@@ -8,6 +8,18 @@
 3. Start server:
    - `uvicorn server:app --reload --port 8000`
 
+## Gemini (optional, low-cost/free-tier friendly)
+
+1. Get a key from Google AI Studio.
+2. Create a local `.env` from `.env.example`.
+3. Set:
+   - `MOCK_MODE=false`
+   - `LLM_PROVIDER=gemini`
+   - `GOOGLE_API_KEY=...`
+   - `GEMINI_MODEL=gemini-1.5-flash`
+
+If key/model is missing or fails, backend automatically falls back to mock rule-based response.
+
 ## Endpoints
 
 - `GET /health`
@@ -19,4 +31,4 @@
 ## Notes
 
 - Current implementation uses mock medication data and rule-based tools.
-- You can later replace mock logic in `agent.py` with Strands + Bedrock.
+- You can switch to Gemini by env config, or later replace with Strands + Bedrock.

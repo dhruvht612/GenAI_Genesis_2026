@@ -1,13 +1,20 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
 import json
+import os
 import uuid
 from datetime import datetime
 from typing import AsyncIterator
 
+from dotenv import load_dotenv
+
 from mock_data import MOCK_MEDICATION_DB, PATIENTS, MedicationProfile, PatientRecord
 from tools import assess_symptoms, generate_doctor_report
+
+
+load_dotenv()
 
 
 async def _emit(event_type: str, content: str | dict) -> str:
@@ -17,6 +24,71 @@ async def _emit(event_type: str, content: str | dict) -> str:
 
 def _normalize_medication_name(name: str) -> str:
     return name.strip().lower()
+
+
+def _env_flag(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _rule_based_response(patient: PatientRecord, assessment: dict) -> str:
+    return (
+        f"Thanks {patient.name}. I assessed your symptoms as {assessment['urgency']} urgency "
+        f"(severity {assessment['severity_score']}/10). "
+        "If symptoms worsen, seek in-person medical care promptly."
+    )
+
+
+def _gemini_response(patient: PatientRecord, user_message: str, assessment: dict) -> str | None:
+    api_key = os.getenv("GOOGLE_API_KEY")
+    model = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+    if not api_key:
+        return None
+
+    try:
+        genai = importlib.import_module("google.genai")
+    except Exception:
+        return None
+
+    prompt = (
+        "You are MediGuard, a concise health concierge for demo use. "
+        "Do not diagnose. Keep response under 70 words. "
+        f"Patient: {patient.name}, age {patient.age}. "
+        f"Conditions: {', '.join(patient.conditions)}. "
+        f"Meds: {', '.join(patient.medications)}. "
+        f"User message: {user_message}. "
+        f"Assessment: urgency={assessment.get('urgency')}, "
+        f"severity={assessment.get('severity_score')}/10, "
+        f"matched_medication={assessment.get('matched_medication')}. "
+        "Provide supportive guidance and clear next step."
+    )
+
+    try:
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(model=model, contents=prompt)
+        text = getattr(response, "text", None)
+        if text and text.strip():
+            return text.strip()
+    except Exception:
+        return None
+
+    return None
+
+
+async def _generate_agent_response(patient: PatientRecord, user_message: str, assessment: dict) -> str:
+    mock_mode = _env_flag("MOCK_MODE", default=True)
+    provider = os.getenv("LLM_PROVIDER", "mock").strip().lower()
+
+    if mock_mode or provider != "gemini":
+        return _rule_based_response(patient, assessment)
+
+    gemini_text = await asyncio.to_thread(_gemini_response, patient, user_message, assessment)
+    if gemini_text:
+        return gemini_text
+
+    return _rule_based_response(patient, assessment)
 
 
 def _build_profile(medication_name: str) -> MedicationProfile:
@@ -88,10 +160,7 @@ async def chat_stream(patient_id: str, user_message: str) -> AsyncIterator[str]:
     assessment = assess_symptoms(user_text=user_message, medications=patient.medications)
     patient.latest_assessment = assessment
 
-    agent_response = (
-        f"Thanks {patient.name}. I assessed your symptoms as {assessment['urgency']} urgency "
-        f"(severity {assessment['severity_score']}/10)."
-    )
+    agent_response = await _generate_agent_response(patient, user_message, assessment)
 
     for token in agent_response.split(" "):
         yield await _emit("token", token + " ")
