@@ -6,13 +6,6 @@ const QUICK_SYMPTOMS = ['Headache', 'Nausea', 'Dizziness', 'Fatigue'];
 
 const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
 
-const MARIA_PROFILE = {
-  name: 'Maria Chen',
-  age: 58,
-  conditions: ['Type 2 Diabetes', 'Hypertension', 'High Cholesterol'],
-  medications: ['Metformin', 'Lisinopril', 'Atorvastatin'],
-};
-
 const now = () => new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
 const INITIAL_MESSAGES = [
@@ -60,12 +53,23 @@ export default function PatientCheckIn() {
   const navigate = useNavigate();
   const [messages, setMessages] = useState(INITIAL_MESSAGES);
   const [input, setInput] = useState('');
-  const [patientId, setPatientId] = useState(localStorage.getItem('mediguard_patient_id') || '');
+  const [patientId, setPatientId] = useState('');
   const [status, setStatus] = useState('Connecting to backend...');
   const [loading, setLoading] = useState(false);
   const pendingAiMessageId = useRef(null);
   const messageId = useRef(2);
   const hasInitialized = useRef(false);
+
+  const sessionUserId = sessionStorage.getItem('mediguard_user_id') || 'MJ-2024';
+  const sessionName = sessionStorage.getItem('mediguard_displayName') || 'Maria Chen';
+
+  const patientProfile = {
+    user_id: sessionUserId,
+    name: sessionName,
+    age: 58,
+    conditions: ['Type 2 Diabetes', 'Hypertension', 'High Cholesterol'],
+    medications: ['Metformin', 'Lisinopril', 'Atorvastatin'],
+  };
 
   const isConnected = useMemo(() => Boolean(patientId), [patientId]);
 
@@ -75,35 +79,34 @@ export default function PatientCheckIn() {
     return id;
   };
 
+  const setupPatient = async () => {
+    const res = await fetch(`${API}/setup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patientProfile),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.patient_id) throw new Error('Setup failed');
+    setPatientId(data.patient_id);
+    localStorage.setItem('mediguard_patient_id', data.patient_id);
+    setStatus('Connected to backend');
+    return data.patient_id;
+  };
+
   useEffect(() => {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
 
-    if (patientId) {
-      setStatus('Connected to backend');
-      return;
-    }
-
     const setup = async () => {
       try {
-        const res = await fetch(`${API}/setup`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(MARIA_PROFILE),
-        });
-        const data = await res.json();
-        if (!res.ok || !data.patient_id) throw new Error('Setup failed');
-
-        setPatientId(data.patient_id);
-        localStorage.setItem('mediguard_patient_id', data.patient_id);
-        setStatus('Connected to backend');
+        await setupPatient();
       } catch {
         setStatus('Backend offline: running in UI-only mode');
       }
     };
 
     setup();
-  }, [patientId]);
+  }, []);
 
   const handleSend = async (e) => {
     e.preventDefault();
@@ -150,6 +153,12 @@ export default function PatientCheckIn() {
         }
 
         if (event.type === 'error') {
+          if (event.content === 'Patient not found') {
+            setupPatient()
+              .then(() => appendMessage('ai', 'Session refreshed. Please send your message again.'))
+              .catch(() => appendMessage('ai', 'Error: Patient session expired and refresh failed.'));
+            return;
+          }
           appendMessage('ai', `Error: ${event.content}`);
         }
       });

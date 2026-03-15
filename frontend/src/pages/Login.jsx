@@ -4,6 +4,8 @@ import RoleSelector from '../components/RoleSelector';
 import AuthSidePanel from '../components/AuthSidePanel';
 import './Auth.css';
 
+const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
+
 const DEMO_PATIENT = {
   role: 'patient',
   email: 'maria.chen@demo.mediguard.ca',
@@ -22,6 +24,8 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [successMessage, setSuccessMessage] = useState(null);
+  const [errorMessage, setErrorMessage] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (location.state?.message) {
@@ -30,24 +34,46 @@ export default function Login() {
     }
   }, [location]);
 
-  const saveSession = (r, em) => {
+  const saveSession = (r, em, userId, displayName) => {
     sessionStorage.setItem('mediguard_role', r);
     sessionStorage.setItem('mediguard_email', em);
-    sessionStorage.setItem('mediguard_displayName', r === 'patient' ? 'Maria' : 'Dr. Smith');
+    sessionStorage.setItem('mediguard_user_id', userId);
+    sessionStorage.setItem('mediguard_displayName', displayName);
+  };
+
+  const performLogin = async (selectedRole, selectedEmail, selectedPassword) => {
+    setErrorMessage(null);
+    setLoading(true);
+
+    try {
+      const res = await fetch(`${API}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: selectedRole, email: selectedEmail, password: selectedPassword }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.detail || 'Login failed');
+
+      saveSession(data.role, data.email, data.user_id, data.display_name);
+      navigate(data.role === 'doctor' ? '/doctor' : '/dashboard', { state: { role: data.role, email: data.email } });
+    } catch (err) {
+      setErrorMessage(err.message || 'Unable to log in');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    saveSession(role, email);
-    navigate(role === 'doctor' ? '/doctor' : '/dashboard', { state: { role, email } });
+    performLogin(role, email, password);
   };
 
   const handleDemoLogin = (demo) => {
     setRole(demo.role);
     setEmail(demo.email);
     setPassword(demo.password);
-    saveSession(demo.role, demo.email);
-    navigate(demo.role === 'doctor' ? '/doctor' : '/dashboard', { state: { role: demo.role, email: demo.email } });
+    performLogin(demo.role, demo.email, demo.password);
   };
 
   return (
@@ -59,6 +85,9 @@ export default function Login() {
             <h1 className="auth-form-title">Log in</h1>
             {successMessage && (
               <p className="auth-success-msg">{successMessage}</p>
+            )}
+            {errorMessage && (
+              <p className="auth-error-msg">{errorMessage}</p>
             )}
             <form onSubmit={handleSubmit} className="auth-form">
               <div className="form-group">
@@ -74,6 +103,7 @@ export default function Login() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
                   required
+                  disabled={loading}
                   className="form-input"
                 />
               </div>
@@ -85,6 +115,7 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  disabled={loading}
                   className="form-input"
                 />
                 <a href="#" className="form-link" onClick={(e) => e.preventDefault()}>Forgot password?</a>
@@ -92,8 +123,9 @@ export default function Login() {
               <button
                 type="submit"
                 className={`auth-submit ${role === 'patient' ? 'auth-submit-primary' : 'auth-submit-secondary'}`}
+                disabled={loading}
               >
-                Log in
+                {loading ? 'Logging in...' : 'Log in'}
               </button>
               <div className="demo-buttons">
                 <span className="demo-label">Try demo:</span>

@@ -6,7 +6,8 @@
 2. Install dependencies:
    - `pip install -r requirements.txt`
 3. Start server:
-   - `uvicorn server:app --reload --port 8000`
+   - `python server.py`
+   - or `uvicorn server:app --reload --port 8000`
 
 ## PharmacyMCP in this repo
 
@@ -39,3 +40,4 @@ If key/model is missing or fails, backend automatically falls back to mock rule-
 
 - Current implementation uses mock medication data and rule-based tools.
 - You can switch to Gemini by env config with automatic fallback to mock mode.
+- Patient state is persisted to local SQLite at `backend/mediaguard.db`.

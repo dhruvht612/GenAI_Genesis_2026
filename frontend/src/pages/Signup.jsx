@@ -5,6 +5,8 @@ import AuthSidePanel from '../components/AuthSidePanel';
 import MedicationTagInput from '../components/MedicationTagInput';
 import './Auth.css';
 
+const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
+
 const PRIMARY_CONDITIONS = [
   'Type 2 Diabetes',
   'Hypertension',
@@ -35,10 +37,36 @@ export default function Signup() {
   const [specialty, setSpecialty] = useState('');
   const [licenseNumber, setLicenseNumber] = useState('');
   const [terms, setTerms] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    navigate('/login', { state: { message: 'Account created. Please log in.' } });
+    setErrorMessage(null);
+    setLoading(true);
+
+    try {
+      const res = await fetch(`${API}/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          role,
+          email,
+          password,
+          first_name: firstName,
+          last_name: lastName,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.detail || 'Signup failed');
+
+      navigate('/login', { state: { message: 'Account created. Please log in.' } });
+    } catch (err) {
+      setErrorMessage(err.message || 'Unable to create account');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -48,6 +76,7 @@ export default function Signup() {
         <div className="auth-form-panel">
           <div className="auth-form-wrap auth-form-wrap-signup">
             <h1 className="auth-form-title">Sign up</h1>
+            {errorMessage && <p className="auth-error-msg">{errorMessage}</p>}
             <form onSubmit={handleSubmit} className="auth-form">
               <div className="form-group">
                 <label>Role</label>
@@ -62,6 +91,7 @@ export default function Signup() {
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     required
+                    disabled={loading}
                     className="form-input"
                   />
                 </div>
@@ -73,6 +103,7 @@ export default function Signup() {
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     required
+                    disabled={loading}
                     className="form-input"
                   />
                 </div>
@@ -86,6 +117,7 @@ export default function Signup() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
                   required
+                  disabled={loading}
                   className="form-input"
                 />
               </div>
@@ -97,6 +129,7 @@ export default function Signup() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  disabled={loading}
                   className="form-input"
                 />
               </div>
@@ -165,8 +198,9 @@ export default function Signup() {
               <button
                 type="submit"
                 className={`auth-submit ${role === 'patient' ? 'auth-submit-primary' : 'auth-submit-secondary'}`}
+                disabled={loading}
               >
-                Create account
+                {loading ? 'Creating account...' : 'Create account'}
               </button>
             </form>
             <p className="auth-switch">
