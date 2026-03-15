@@ -1,0 +1,46 @@
+.role-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.role-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.25rem 1rem;
+  border-radius: var(--radius);
+  border: 2px solid var(--border);
+  background: var(--card-bg);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.role-card:hover {
+  border-color: var(--text-muted);
+}
+
+.role-card-active.role-card-patient {
+  border-color: var(--primary);
+  background: rgba(27, 184, 106, 0.08);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+.role-card-active.role-card-doctor {
+  border-color: var(--secondary);
+  background: rgba(124, 92, 191, 0.08);
+  box-shadow: 0 0 0 1px var(--secondary);
+}
+
+.role-icon {
+  font-size: 1.75rem;
+}
+
+.role-label {
+  font-family: var(--font-heading);
+}

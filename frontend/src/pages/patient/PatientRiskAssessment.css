@@ -1,0 +1,215 @@
+.patient-risk {
+  padding: 1.5rem;
+  max-width: 900px;
+}
+
+.risk-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.risk-header-icon {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.risk-title {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  margin: 0 0 0.25rem 0;
+  color: var(--text);
+}
+
+.risk-subtitle {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.risk-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.risk-level-card {
+  padding: 1.5rem;
+}
+
+.risk-level-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.risk-level-value {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--warning);
+  display: block;
+  margin-bottom: 1.25rem;
+}
+
+.risk-meter {
+  margin-top: 1rem;
+}
+
+.risk-meter-bar {
+  height: 8px;
+  background: linear-gradient(to right, var(--primary), var(--warning), var(--danger));
+  border-radius: 999px;
+  position: relative;
+  margin-bottom: 0.5rem;
+}
+
+.risk-meter-dot {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  background: white;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  box-shadow: var(--shadow);
+}
+
+.risk-meter-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.risk-right {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.risk-means-card {
+  padding: 1.25rem;
+}
+
+.risk-means-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.risk-means-header h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.risk-means-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+}
+
+.risk-means-intro {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.risk-means-card ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.risk-recommendations-card h2 {
+  font-size: 1rem;
+  margin: 0 0 0.75rem 0;
+}
+
+.risk-recommendations-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.risk-recommendations-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  font-size: 0.9rem;
+}
+
+.risk-check {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.risk-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.btn-risk-primary {
+  background: #3b82f6;
+  color: white;
+  padding: 0.65rem 1.25rem;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-body);
+}
+
+.btn-risk-primary:hover {
+  filter: brightness(1.05);
+}
+
+.btn-risk-secondary {
+  background: white;
+  color: var(--text);
+  padding: 0.65rem 1.25rem;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: 2px solid var(--border);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-body);
+}
+
+.btn-risk-secondary:hover {
+  border-color: var(--text-muted);
+}
+
+.btn-icon {
+  font-size: 1rem;
+}
+
+@media (max-width: 768px) {
+  .risk-grid {
+    grid-template-columns: 1fr;
+  }
+}

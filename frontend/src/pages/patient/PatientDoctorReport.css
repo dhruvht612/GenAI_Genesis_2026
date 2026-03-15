@@ -1,0 +1,237 @@
+.patient-report {
+  padding: 1.5rem;
+  max-width: 1000px;
+}
+
+.report-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.report-title {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  margin: 0 0 0.35rem 0;
+  color: var(--text);
+}
+
+.report-date {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.report-date-icon {
+  font-size: 1rem;
+}
+
+.report-header-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.btn-report {
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 0.9rem;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-body);
+}
+
+.btn-report-outline {
+  background: #f0f0ef;
+  color: var(--text);
+}
+
+.btn-report-primary {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-report-primary:hover {
+  filter: brightness(1.05);
+}
+
+.report-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+.report-card {
+  padding: 1.25rem;
+}
+
+.report-patient-info {
+  text-align: center;
+}
+
+.report-patient-info .report-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.report-patient-info h3 {
+  font-size: 1.1rem;
+  margin: 0 0 0.25rem 0;
+}
+
+.report-meta {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0.5rem 0 0 0;
+  line-height: 1.4;
+}
+
+.report-card-title {
+  font-size: 0.95rem;
+  margin: 0 0 1rem 0;
+}
+
+.report-adherence-item {
+  margin-bottom: 1rem;
+}
+
+.report-adherence-item:last-child {
+  margin-bottom: 0;
+}
+
+.report-adherence-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.35rem;
+}
+
+.report-adherence-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.report-adherence-pct {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.report-adherence-bar-wrap {
+  height: 6px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.25rem;
+}
+
+.report-adherence-bar {
+  height: 100%;
+  background: var(--warning);
+  border-radius: 999px;
+}
+
+.report-adherence-bar-full {
+  background: var(--primary);
+}
+
+.report-adherence-detail {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.report-ai-intro {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin: 0 0 0.75rem 0;
+  line-height: 1.5;
+}
+
+.report-ai-list {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.report-ai-list li {
+  margin-bottom: 0.35rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.report-ai-highlight {
+  color: var(--primary) !important;
+  font-weight: 500;
+}
+
+.report-symptoms-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.report-symptom-item {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.report-symptom-item:last-child {
+  border-bottom: none;
+}
+
+.report-symptom-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(249, 115, 22, 0.2);
+  color: #ea580c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.report-symptom-item:nth-child(2) .report-symptom-num {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+}
+
+.report-symptom-item strong {
+  display: block;
+  font-size: 0.9rem;
+}
+
+.report-symptom-meta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  display: block;
+  margin-top: 0.15rem;
+}
+
+@media (max-width: 768px) {
+  .report-grid {
+    grid-template-columns: 1fr;
+  }
+}

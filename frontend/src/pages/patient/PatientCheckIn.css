@@ -1,0 +1,168 @@
+.patient-checkin {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: calc(100vh - 140px);
+  padding: 1.5rem;
+}
+
+.checkin-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.checkin-header-icon {
+  font-size: 2rem;
+}
+
+.checkin-title {
+  font-family: var(--font-heading);
+  font-size: 1.35rem;
+  margin: 0 0 0.2rem 0;
+  color: var(--text);
+}
+
+.checkin-status {
+  font-size: 0.9rem;
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.checkin-chat {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding-right: 0.5rem;
+}
+
+.checkin-message {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.checkin-message-user {
+  flex-direction: row-reverse;
+}
+
+.checkin-message-avatar {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.checkin-message-bubble {
+  max-width: 75%;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-lg);
+  background: #f0f0ef;
+}
+
+.checkin-message-user .checkin-message-bubble {
+  background: var(--primary);
+  color: white;
+}
+
+.checkin-message-bubble p {
+  margin: 0 0 0.35rem 0;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.checkin-message-time {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.checkin-quick {
+  margin-bottom: 1rem;
+}
+
+.checkin-quick-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.checkin-quick-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.checkin-quick-btn {
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  border: none;
+  background: rgba(124, 92, 191, 0.12);
+  color: var(--secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+
+.checkin-quick-btn:hover {
+  background: rgba(124, 92, 191, 0.2);
+}
+
+.checkin-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.checkin-mic {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  font-size: 1.2rem;
+  cursor: pointer;
+  border-radius: var(--radius);
+}
+
+.checkin-mic:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.checkin-input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  font-family: var(--font-body);
+}
+
+.checkin-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.checkin-send {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: var(--primary);
+  color: white;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.checkin-send:hover {
+  filter: brightness(1.05);
+}
