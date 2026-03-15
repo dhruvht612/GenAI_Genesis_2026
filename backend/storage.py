@@ -115,6 +115,30 @@ def initialize_db() -> None:
         )
         _seed_demo_user(
             conn,
+            user_id="DR-1002",
+            role="doctor",
+            email="dr.wilson@demo.medguard.ca",
+            password="demo123",
+            display_name="Dr. Jane Wilson",
+        )
+        _seed_demo_user(
+            conn,
+            user_id="DR-1003",
+            role="doctor",
+            email="dr.lee@demo.medguard.ca",
+            password="demo123",
+            display_name="Dr. Michael Lee",
+        )
+        _seed_demo_user(
+            conn,
+            user_id="DR-1004",
+            role="doctor",
+            email="dr.patel@demo.medguard.ca",
+            password="demo123",
+            display_name="Dr. Sarah Patel",
+        )
+        _seed_demo_user(
+            conn,
             user_id="PT-JK2025",
             role="patient",
             email="james.kim@demo.medguard.ca",

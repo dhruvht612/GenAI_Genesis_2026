@@ -36,6 +36,11 @@ If key/model is missing or fails, backend automatically falls back to mock rule-
 - `POST /proactive-checkin/{patient_id}` (SSE)
 - `GET /report/{patient_id}`
 
+## Demo logins (password: `demo123`)
+
+- **Doctors**: `dr.smith@demo.medguard.ca`, `dr.wilson@demo.medguard.ca`, `dr.lee@demo.medguard.ca`, `dr.patel@demo.medguard.ca`
+- **Patients**: `maria.chen@demo.medguard.ca`, `james.kim@demo.medguard.ca`, and others (see seed in `storage.py`)
+
 ## Notes
 
 - Current implementation uses mock medication data and rule-based tools.
