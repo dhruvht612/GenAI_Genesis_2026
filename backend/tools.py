@@ -16,7 +16,12 @@ def assess_symptoms(
     score = 2
     rationale: list[str] = []
 
-    if "dizzy" in text or "stand up" in text:
+    if any(word in text for word in ("severe", "terrible", "really bad", "very bad", "emergency", "critical", "worst")):
+        score = max(score, 7)
+        urgency = "high" if score >= 7 else urgency
+        rationale.append("High-severity wording detected in symptom description.")
+
+    if "dizzy" in text or "stand up" in text or "dizziness" in text:
         if any(m.lower() == "lisinopril" for m in medications):
             matched_medication = "Lisinopril"
             urgency = "high"

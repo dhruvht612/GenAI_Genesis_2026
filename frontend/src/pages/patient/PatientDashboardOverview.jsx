@@ -22,7 +22,6 @@ export default function PatientDashboardOverview() {
   const name = profile?.name || sessionStorage.getItem('mediguard_displayName') || 'Patient';
   const medications = profile?.medications || [];
   const primaryCondition = profile?.conditions?.[0];
-  const age = profile?.age;
 
   return (
     <div className="patient-content page-enter">
@@ -35,7 +34,7 @@ export default function PatientDashboardOverview() {
         <div className="patient-health-card">
           <span className="patient-health-label">Overall Health Status</span>
           <span className="patient-health-value">
-            {primaryCondition && age != null ? `${primaryCondition} · ${age}y` : primaryCondition || (age != null ? `${age} years` : 'Excellent')}
+            {primaryCondition || 'Excellent'}
           </span>
           <span className="patient-health-icon" aria-hidden>📈</span>
         </div>

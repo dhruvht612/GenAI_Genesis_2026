@@ -248,13 +248,14 @@ export function TravelConnectSignUp({ onSubmit, errorMessage, isSubmitting = fal
         </div>
 
         {/* Right side - Sign Up Form */}
-        <div className="w-full md:w-1/2 p-8 md:p-10 flex flex-col justify-center bg-white max-h-[90vh] overflow-y-auto">
+        <div className="w-full md:w-1/2 p-8 md:p-10 flex flex-col justify-center bg-white max-h-[90vh] overflow-y-auto overflow-x-hidden pt-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
+            className="min-h-0"
           >
-            <h1 className="text-2xl md:text-3xl font-bold mb-1 text-gray-800" style={{ wordBreak: 'keep-all' }}>
+            <h1 className="text-2xl md:text-3xl font-bold mb-1 text-gray-800 leading-tight pt-0.5" style={{ wordBreak: 'keep-all' }}>
               Create account
             </h1>
             <p className="text-gray-500 mb-6">Sign up to get started</p>

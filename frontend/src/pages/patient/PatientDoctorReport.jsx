@@ -35,7 +35,7 @@ export default function PatientDoctorReport() {
     .join('') || 'PT';
 
   useEffect(() => {
-    const patientId = localStorage.getItem('mediguard_patient_id');
+    const patientId = sessionStorage.getItem('mediguard_user_id') || localStorage.getItem('mediguard_patient_id');
     if (!patientId) return;
 
     const fetchReport = async () => {

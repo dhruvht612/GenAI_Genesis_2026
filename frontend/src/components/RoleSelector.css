@@ -26,15 +26,17 @@
 }
 
 .role-card-active.role-card-patient {
-  border-color: var(--primary);
-  background: rgba(27, 184, 106, 0.08);
-  box-shadow: 0 0 0 1px var(--primary);
+  border-color: #6d28d9;
+  border-width: 2px;
+  background: #f0fdf4;
+  box-shadow: 0 0 0 1px #6d28d9;
 }
 
 .role-card-active.role-card-doctor {
-  border-color: var(--secondary);
-  background: rgba(124, 92, 191, 0.08);
-  box-shadow: 0 0 0 1px var(--secondary);
+  border-color: #6d28d9;
+  border-width: 2px;
+  background: #f5f3ff;
+  box-shadow: 0 0 0 1px #6d28d9;
 }
 
 .role-icon {

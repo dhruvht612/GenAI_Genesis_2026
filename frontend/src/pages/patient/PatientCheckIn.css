@@ -130,6 +130,12 @@
   background: rgba(124, 92, 191, 0.2);
 }
 
+.checkin-report-hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
 .checkin-input-wrap {
   display: flex;
   align-items: center;

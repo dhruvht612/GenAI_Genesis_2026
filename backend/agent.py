@@ -225,7 +225,7 @@ async def chat_stream(patient_id: str, user_message: str) -> AsyncIterator[str]:
         yield await _emit("token", token + " ")
         await asyncio.sleep(0.02)
 
-    if assessment["severity_score"] >= 7:
+    if assessment["severity_score"] >= 5:
         yield await _emit("tool_call", "generate_doctor_report")
         report = generate_doctor_report(
             patient_name=patient.name,

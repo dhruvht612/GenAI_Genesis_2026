@@ -117,67 +117,99 @@ export default function PatientProfile() {
     }
   };
 
+  const initials = (name || sessionDisplayName)
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((s) => s[0])
+    .join('')
+    .toUpperCase() || 'PT';
+
   return (
     <div className="patient-page patient-profile page-enter">
-      <div className="profile-header">
+      <header className="profile-header">
         <h1 className="profile-title">Profile &amp; Settings</h1>
         <p className="profile-subtitle">Manage your health profile and preferences</p>
-      </div>
+      </header>
       <div className="profile-grid">
         <div className="profile-left">
-          <div className="dashboard-card profile-card profile-card-teal">
-            <span className="profile-card-icon">👤</span>
-            <h2 className="profile-name">{name || sessionDisplayName}</h2>
-            <p className="profile-id">Patient ID: {userId ? `#${userId}` : '—'}</p>
-            <div className="profile-contact">
-              <p><span className="profile-contact-icon">✉</span> {sessionEmail || '—'}</p>
-              {phone && <p><span className="profile-contact-icon">📞</span> {phone}</p>}
+          <div className="dashboard-card profile-hero-card">
+            <div className="profile-hero-avatar" aria-hidden>{initials}</div>
+            <h2 className="profile-hero-name">{name || sessionDisplayName}</h2>
+            <p className="profile-hero-id">Patient ID {userId ? `#${userId}` : '—'}</p>
+            <div className="profile-hero-contact">
+              <p className="profile-hero-contact-line">
+                <span className="profile-hero-contact-icon" aria-hidden>✉</span>
+                <span>{sessionEmail || '—'}</span>
+              </p>
+              {phone && (
+                <p className="profile-hero-contact-line">
+                  <span className="profile-hero-contact-icon" aria-hidden>📞</span>
+                  <span>{phone}</span>
+                </p>
+              )}
               {(address || city) && (
-                <p><span className="profile-contact-icon">📍</span> {[address, city, province, postalCode].filter(Boolean).join(', ')}</p>
+                <p className="profile-hero-contact-line">
+                  <span className="profile-hero-contact-icon" aria-hidden>📍</span>
+                  <span>{[address, city, province, postalCode].filter(Boolean).join(', ')}</span>
+                </p>
               )}
             </div>
           </div>
           <div className="dashboard-card profile-edit-card">
-            <h3 className="profile-card-heading">Edit profile</h3>
+            <h3 className="profile-section-title">Edit profile</h3>
+            <p className="profile-section-desc">Update your personal and health information.</p>
             {loading ? (
-              <p className="profile-loading">Loading...</p>
+              <div className="profile-loading-wrap" aria-live="polite">
+                <span className="profile-loading-dot" />
+                <span className="profile-loading-dot" />
+                <span className="profile-loading-dot" />
+                <span className="profile-loading-text">Loading...</span>
+              </div>
             ) : (
               <form onSubmit={handleSave} className="profile-edit-form">
-                <div className="profile-edit-field">
-                  <label htmlFor="profile-name">Display name</label>
-                  <input
-                    id="profile-name"
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="profile-edit-input"
-                    placeholder="Your name"
-                  />
-                </div>
-                <div className="profile-edit-field">
-                  <label htmlFor="profile-age">Age</label>
-                  <input
-                    id="profile-age"
-                    type="number"
-                    min={1}
-                    max={120}
-                    value={age}
-                    onChange={(e) => setAge(e.target.value)}
-                    className="profile-edit-input"
-                    placeholder="e.g. 45"
-                  />
-                </div>
-                <div className="profile-edit-field">
-                  <label htmlFor="profile-phone">Phone number</label>
-                  <input
-                    id="profile-phone"
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="profile-edit-input"
-                    placeholder="e.g. (555) 123-4567"
-                  />
-                </div>
+                <fieldset className="profile-fieldset">
+                  <legend className="profile-legend">Personal</legend>
+                  <div className="profile-edit-field">
+                    <label htmlFor="profile-name">Display name</label>
+                    <input
+                      id="profile-name"
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="profile-edit-input"
+                      placeholder="Your name"
+                    />
+                  </div>
+                  <div className="profile-edit-field">
+                    <label htmlFor="profile-age">Age</label>
+                    <input
+                      id="profile-age"
+                      type="number"
+                      min={1}
+                      max={120}
+                      value={age}
+                      onChange={(e) => setAge(e.target.value)}
+                      className="profile-edit-input"
+                      placeholder="e.g. 45"
+                      aria-describedby="profile-age-desc"
+                    />
+                    <span id="profile-age-desc" className="profile-field-hint">Optional</span>
+                  </div>
+                </fieldset>
+                <fieldset className="profile-fieldset">
+                  <legend className="profile-legend">Contact &amp; address</legend>
+                  <div className="profile-edit-field">
+                    <label htmlFor="profile-phone">Phone number</label>
+                    <input
+                      id="profile-phone"
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="profile-edit-input"
+                      placeholder="e.g. (555) 123-4567"
+                    />
+                  </div>
                 <div className="profile-edit-field">
                   <label htmlFor="profile-address">Street address</label>
                   <input
@@ -216,56 +248,65 @@ export default function PatientProfile() {
                     </select>
                   </div>
                 </div>
-                <div className="profile-edit-field">
-                  <label htmlFor="profile-postal">Postal code</label>
-                  <input
-                    id="profile-postal"
-                    type="text"
-                    value={postalCode}
-                    onChange={(e) => setPostalCode(e.target.value)}
-                    className="profile-edit-input"
-                    placeholder="e.g. M5V 3A8"
-                    maxLength={7}
-                  />
-                </div>
-                <div className="profile-edit-field">
-                  <label htmlFor="profile-condition">Primary condition</label>
-                  <select
-                    id="profile-condition"
-                    value={primaryCondition}
-                    onChange={(e) => setPrimaryCondition(e.target.value)}
-                    className="profile-edit-input"
-                  >
-                    <option value="">Select condition</option>
-                    {PRIMARY_CONDITIONS.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="profile-edit-field">
-                  <label>Medications</label>
-                  <MedicationTagInput
-                    value={medications}
-                    onChange={setMedications}
-                    placeholder="Type medication and press Enter"
-                  />
-                </div>
+                  <div className="profile-edit-field">
+                    <label htmlFor="profile-postal">Postal code</label>
+                    <input
+                      id="profile-postal"
+                      type="text"
+                      value={postalCode}
+                      onChange={(e) => setPostalCode(e.target.value)}
+                      className="profile-edit-input"
+                      placeholder="e.g. M5V 3A8"
+                      maxLength={7}
+                    />
+                  </div>
+                </fieldset>
+                <fieldset className="profile-fieldset">
+                  <legend className="profile-legend">Health</legend>
+                  <div className="profile-edit-field">
+                    <label htmlFor="profile-condition">Primary condition</label>
+                    <select
+                      id="profile-condition"
+                      value={primaryCondition}
+                      onChange={(e) => setPrimaryCondition(e.target.value)}
+                      className="profile-edit-input"
+                    >
+                      <option value="">Select condition</option>
+                      {PRIMARY_CONDITIONS.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="profile-edit-field">
+                    <label htmlFor="profile-medications">Medications</label>
+                    <MedicationTagInput
+                      value={medications}
+                      onChange={setMedications}
+                      placeholder="Type medication and press Enter"
+                    />
+                    <span className="profile-field-hint">Press Enter to add each medication</span>
+                  </div>
+                </fieldset>
                 {saveMessage && (
-                  <p className={`profile-save-msg ${saveMessage.includes('updated') ? 'profile-save-msg-ok' : 'profile-save-msg-err'}`}>
+                  <p role="status" className={`profile-save-msg ${saveMessage.includes('updated') ? 'profile-save-msg-ok' : 'profile-save-msg-err'}`}>
                     {saveMessage}
                   </p>
                 )}
-                <button type="submit" className="profile-save-btn" disabled={saving}>
+                <button type="submit" className="profile-save-btn" disabled={saving} aria-busy={saving}>
                   {saving ? 'Saving...' : 'Update profile'}
                 </button>
               </form>
             )}
           </div>
           <div className="dashboard-card profile-settings-card">
-            <h3 className="profile-settings-title">App Settings</h3>
+            <h3 className="profile-section-title">App Settings</h3>
+            <p className="profile-section-desc">Notifications and display preferences.</p>
             <div className="profile-toggle-row">
-              <span className="profile-toggle-icon">🔔</span>
-              <span className="profile-toggle-label">Push Notifications</span>
+              <span className="profile-toggle-icon" aria-hidden>🔔</span>
+              <div className="profile-toggle-text">
+                <span className="profile-toggle-label">Push Notifications</span>
+                <span className="profile-toggle-desc">Get reminders for check-ins and medications</span>
+              </div>
               <button
                 type="button"
                 role="switch"
@@ -277,8 +318,11 @@ export default function PatientProfile() {
               </button>
             </div>
             <div className="profile-toggle-row">
-              <span className="profile-toggle-icon">☀</span>
-              <span className="profile-toggle-label">Dark Mode</span>
+              <span className="profile-toggle-icon" aria-hidden>☀</span>
+              <div className="profile-toggle-text">
+                <span className="profile-toggle-label">Dark Mode</span>
+                <span className="profile-toggle-desc">Use dark theme across the app</span>
+              </div>
               <button
                 type="button"
                 role="switch"
@@ -292,29 +336,36 @@ export default function PatientProfile() {
           </div>
         </div>
         <div className="profile-right">
-          <div className="dashboard-card profile-health-card">
-            <h3 className="profile-card-heading">👤 Health summary</h3>
-            <div className="profile-health-rows">
-              <div className="profile-health-row profile-health-row-static">
-                <span>Age</span>
-                <span className="profile-health-value">{age ? `${age} years` : '—'}</span>
+          <div className="dashboard-card profile-summary-card">
+            <h3 className="profile-section-title">Health summary</h3>
+            <div className="profile-summary-list">
+              <div className="profile-summary-item">
+                <span className="profile-summary-label">Age</span>
+                <span className="profile-summary-value">{age ? `${age} years` : '—'}</span>
               </div>
-              <div className="profile-health-row profile-health-row-static">
-                <span>Condition</span>
-                <span className="profile-health-value">{primaryCondition || '—'}</span>
+              <div className="profile-summary-item">
+                <span className="profile-summary-label">Condition</span>
+                <span className="profile-summary-value">{primaryCondition || '—'}</span>
               </div>
             </div>
           </div>
           <div className="dashboard-card profile-meds-card">
-            <h3 className="profile-card-heading">💊 Active medications</h3>
+            <h3 className="profile-section-title">Active medications</h3>
             {medications.length === 0 ? (
-              <p className="profile-meds-empty">No medications listed. Add them in the form to the left.</p>
+              <div className="profile-meds-empty-state">
+                <span className="profile-meds-empty-icon" aria-hidden>💊</span>
+                <p className="profile-meds-empty-text">No medications listed yet.</p>
+                <p className="profile-meds-empty-hint">Add them in the Edit profile form.</p>
+              </div>
             ) : (
-              medications.map((m, i) => (
-                <div key={i} className="profile-med-row">
-                  <strong>{m}</strong>
-                </div>
-              ))
+              <ul className="profile-meds-list">
+                {medications.map((m, i) => (
+                  <li key={i} className="profile-med-item">
+                    <span className="profile-med-bullet" aria-hidden>•</span>
+                    <span>{m}</span>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         </div>

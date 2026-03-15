@@ -81,13 +81,6 @@ export default function Dashboard() {
     }
   }, [role, navigate]);
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('mediguard_role');
-    sessionStorage.removeItem('mediguard_email');
-    sessionStorage.removeItem('mediguard_displayName');
-    navigate('/login');
-  };
-
   if (!role || !email) return null;
   if (role === 'doctor') return null;
 

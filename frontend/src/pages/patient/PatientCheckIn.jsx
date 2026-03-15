@@ -249,6 +249,7 @@ export default function PatientCheckIn() {
           ))}
         </div>
       </div>
+      <p className="checkin-report-hint">Describe your symptoms and send (e.g. &quot;I feel dizzy&quot; or &quot;severe headache&quot;) — a doctor report is generated for moderate or high severity.</p>
       <form className="checkin-input-wrap" onSubmit={handleSend}>
         <button type="button" className="checkin-mic" aria-label="Voice input">🎤</button>
         <input
