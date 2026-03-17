@@ -21,7 +21,7 @@ export default function DoctorOverview() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const doctorId = sessionStorage.getItem('mediguard_user_id');
+    const doctorId = sessionStorage.getItem('medguard_user_id');
     if (!doctorId) { setLoading(false); return; }
 
     const loadAll = async () => {

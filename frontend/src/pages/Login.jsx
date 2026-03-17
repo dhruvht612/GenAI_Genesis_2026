@@ -8,12 +8,12 @@ const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
 
 const DEMO_PATIENT = {
   role: 'patient',
-  email: 'maria.chen@demo.mediguard.ca',
+  email: 'maria.chen@demo.medguard.ca',
   password: 'demo123',
 };
 const DEMO_DOCTOR = {
   role: 'doctor',
-  email: 'dr.smith@demo.mediguard.ca',
+  email: 'dr.smith@demo.medguard.ca',
   password: 'demo123',
 };
 
@@ -33,12 +33,12 @@ export default function Login() {
   }, [location]);
 
   const saveSession = (r, em, userId, displayName) => {
-    sessionStorage.setItem('mediguard_role', r);
-    sessionStorage.setItem('mediguard_email', em);
-    sessionStorage.setItem('mediguard_user_id', userId);
-    sessionStorage.setItem('mediguard_displayName', displayName);
+    sessionStorage.setItem('medguard_role', r);
+    sessionStorage.setItem('medguard_email', em);
+    sessionStorage.setItem('medguard_user_id', userId);
+    sessionStorage.setItem('medguard_displayName', displayName);
     if (r === 'patient') {
-      sessionStorage.setItem('mediguard_assigned_doctor_id', 'DR-1001');
+      sessionStorage.setItem('medguard_assigned_doctor_id', 'DR-1001');
     }
   };
 

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 
-const STORAGE_KEY = 'mediguard-theme';
+const STORAGE_KEY = 'medguard-theme';
 
 const ThemeContext = createContext({
   theme: 'light',

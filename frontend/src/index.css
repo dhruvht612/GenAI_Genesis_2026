@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* MediGuard Design System — Modern royal blue light theme */
+/* MedGuard Design System — Modern royal blue light theme */
 :root,
 [data-theme="light"] {
   --bg: #f0f4f8;

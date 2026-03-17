@@ -123,6 +123,15 @@
   color: var(--text-muted);
 }
 
+.reports-selected-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-right: 0.5rem;
+}
+
 .reports-type-tabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

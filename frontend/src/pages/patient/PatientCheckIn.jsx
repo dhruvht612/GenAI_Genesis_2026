@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Bot, User } from 'lucide-react';
 import './PatientCheckIn.css';
 
 const QUICK_SYMPTOMS = ['Headache', 'Nausea', 'Dizziness', 'Fatigue'];
@@ -51,7 +52,7 @@ const readSSE = async (response, onEvent) => {
 
 export default function PatientCheckIn() {
   const navigate = useNavigate();
-  const sessionName = sessionStorage.getItem('mediguard_displayName') || 'there';
+  const sessionName = sessionStorage.getItem('medguard_displayName') || 'there';
   const [messages, setMessages] = useState(() => getInitialMessages(sessionName.split(' ')[0]));
   const [input, setInput] = useState('');
   const [patientId, setPatientId] = useState('');
@@ -61,8 +62,8 @@ export default function PatientCheckIn() {
   const messageId = useRef(2);
   const hasInitialized = useRef(false);
 
-  const sessionUserId = sessionStorage.getItem('mediguard_user_id') || `PT-${Math.random().toString(36).slice(2, 8)}`;
-  const assignedDoctorId = sessionStorage.getItem('mediguard_assigned_doctor_id') || 'DR-1001';
+  const sessionUserId = sessionStorage.getItem('medguard_user_id') || `PT-${Math.random().toString(36).slice(2, 8)}`;
+  const assignedDoctorId = sessionStorage.getItem('medguard_assigned_doctor_id') || 'DR-1001';
 
   const isConnected = useMemo(() => Boolean(patientId), [patientId]);
 
@@ -77,7 +78,7 @@ export default function PatientCheckIn() {
       user_id: sessionUserId,
       assigned_doctor_id: assignedDoctorId,
       name: sessionName,
-      age: Number(sessionStorage.getItem('mediguard_age')) || 35,
+      age: Number(sessionStorage.getItem('medguard_age')) || 35,
       conditions: [],
       medications: [],
     };
@@ -90,7 +91,7 @@ export default function PatientCheckIn() {
     const data = await res.json();
     if (!res.ok || !data.patient_id) throw new Error('Setup failed');
     setPatientId(data.patient_id);
-    localStorage.setItem('mediguard_patient_id', data.patient_id);
+    localStorage.setItem('medguard_patient_id', data.patient_id);
     setStatus('Connected to backend');
     return data.patient_id;
   };
@@ -100,7 +101,7 @@ export default function PatientCheckIn() {
       const existing = await fetch(`${API}/patient/${sessionUserId}`);
       if (existing.ok) {
         setPatientId(sessionUserId);
-        localStorage.setItem('mediguard_patient_id', sessionUserId);
+        localStorage.setItem('medguard_patient_id', sessionUserId);
         setStatus('Connected to backend');
         return;
       }
@@ -187,8 +188,8 @@ export default function PatientCheckIn() {
 
         if (event.type === 'report_ready') {
           if (typeof event.content === 'string') {
-            const rKey = sessionStorage.getItem('mediguard_user_id');
-            localStorage.setItem(rKey ? `mediguard_latest_report_${rKey}` : 'mediguard_latest_report', event.content);
+            const rKey = sessionStorage.getItem('medguard_user_id');
+            localStorage.setItem(rKey ? `medguard_latest_report_${rKey}` : 'medguard_latest_report', event.content);
           }
           appendMessage('ai', 'Doctor report generated. Open the report tab to view it.');
         }
@@ -248,7 +249,7 @@ export default function PatientCheckIn() {
   return (
     <div className="patient-page patient-checkin page-enter">
       <div className="checkin-header">
-        <span className="checkin-header-icon">🤖</span>
+        <Bot className="checkin-header-icon" style={{ width: '2rem', height: '2rem', color: 'var(--primary)' }} />
         <div>
           <h1 className="checkin-title">AI Health Assistant</h1>
           <span className="checkin-status">{status}</span>
@@ -264,7 +265,9 @@ export default function PatientCheckIn() {
         {messages.map((msg) => (
           <div key={msg.id} className={`checkin-message checkin-message-${msg.from}`}>
             <span className="checkin-message-avatar" aria-hidden>
-              {msg.from === 'ai' ? '🤖' : '👤'}
+              {msg.from === 'ai'
+                ? <Bot style={{ width: '1.1rem', height: '1.1rem', color: 'var(--primary)' }} />
+                : <User style={{ width: '1.1rem', height: '1.1rem', color: 'var(--text-muted)' }} />}
             </span>
             <div className="checkin-message-bubble">
               <p>{msg.text}</p>

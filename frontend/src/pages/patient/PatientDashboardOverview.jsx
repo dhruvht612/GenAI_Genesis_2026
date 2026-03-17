@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Link2, ArrowRight } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
 
@@ -15,7 +16,7 @@ export default function PatientDashboardOverview() {
   const [checkedMeds, setCheckedMeds] = useState({});
 
   useEffect(() => {
-    const patientId = sessionStorage.getItem('mediguard_user_id');
+    const patientId = sessionStorage.getItem('medguard_user_id');
     if (!patientId) return;
 
     const load = async () => {
@@ -65,13 +66,12 @@ export default function PatientDashboardOverview() {
   const riskText = riskLabel || 'Complete AI Check-In';
 
   const recentSymptoms = overview?.symptoms_log || [];
-  const patientName = overview?.name || sessionStorage.getItem('mediguard_displayName') || 'Patient';
+  const patientName = overview?.name || sessionStorage.getItem('medguard_displayName') || 'Patient';
 
   return (
     <div className="patient-content page-enter">
       <div className="patient-greeting-row">
         <div className="patient-greeting">
-          <span className="patient-greeting-icon">🌙</span>
           <span className="patient-greeting-text">{getGreeting()}</span>
         </div>
         <h1 className="patient-name">{patientName.split(' ')[0]}</h1>
@@ -111,7 +111,7 @@ export default function PatientDashboardOverview() {
                   <strong>{med.name} {med.dosage}</strong>
                   <span className="patient-med-time">{med.time}</span>
                 </div>
-                <button type="button" className="patient-med-link" aria-label="View details">🔗</button>
+                <button type="button" className="patient-med-link" aria-label="View details"><Link2 className="h-4 w-4" /></button>
               </div>
               );
             })}
@@ -122,7 +122,7 @@ export default function PatientDashboardOverview() {
           <Link to="/dashboard/check-in" className="patient-daily-task-card patient-daily-task-link">
             <span className="patient-daily-task-label">DAILY TASK</span>
             <h3 className="patient-daily-task-title">Start AI Health Check-In</h3>
-            <span className="patient-daily-task-icon" aria-hidden>✨</span>
+            <ArrowRight className="patient-daily-task-icon" aria-hidden style={{ color: 'white' }} />
           </Link>
           <section className="patient-section">
             <h2 className="section-title">Recent Symptoms</h2>

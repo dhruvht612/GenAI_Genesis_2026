@@ -170,6 +170,39 @@
   color: var(--text-muted);
 }
 
+.profile-health-label {
+  flex: 0 0 100px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.profile-health-input {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.45rem 0.6rem;
+  font-size: 0.9rem;
+  background: var(--card-bg);
+  color: var(--text);
+}
+
+.profile-health-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.profile-health-row-stack {
+  align-items: flex-start;
+}
+
+.profile-health-row-stack .profile-health-label {
+  margin-top: 0.25rem;
+}
+
+.profile-health-row .medication-tag-input {
+  flex: 1;
+}
+
 .profile-health-value {
   flex: 1;
 }

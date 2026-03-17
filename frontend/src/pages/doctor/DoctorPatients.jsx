@@ -14,7 +14,7 @@ export default function DoctorPatients() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const doctorId = sessionStorage.getItem('mediguard_user_id');
+    const doctorId = sessionStorage.getItem('medguard_user_id');
     if (!doctorId) {
       setLoading(false);
       return;
@@ -84,6 +84,8 @@ export default function DoctorPatients() {
           <thead>
             <tr>
               <th>PATIENT</th>
+              <th>BLOOD TYPE</th>
+              <th>ALLERGIES</th>
               <th>CONDITIONS</th>
               <th>MEDICATIONS</th>
               <th>RISK STATUS</th>
@@ -104,6 +106,8 @@ export default function DoctorPatients() {
                     </div>
                   </div>
                 </td>
+                <td>{p.blood_type || 'Unknown'}</td>
+                <td>{(p.allergies || []).join(', ') || 'None'}</td>
                 <td>
                   <div className="conditions-tags">
                     {p.conditions.slice(0, 2).map((c) => (

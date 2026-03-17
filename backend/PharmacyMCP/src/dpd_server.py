@@ -764,4 +764,5 @@ async def get_all_drug_info(
 
 if __name__ == "__main__":
     # Run the server with streamable HTTP transport
-    mcp.run(transport="streamable-http", host="0.0.0.0", port=8000)
+    # Note: FastAPI backend uses 8000, MCP server uses 8001
+    mcp.run(transport="streamable-http", host="0.0.0.0", port=8001)

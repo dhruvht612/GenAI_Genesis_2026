@@ -1,4 +1,4 @@
-# MediGuard Backend (Hackathon Scaffold)
+# MedGuard Backend (Hackathon Scaffold)
 
 ## Run
 

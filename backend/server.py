@@ -35,7 +35,7 @@ from storage import (
 
 initialize_db()
 
-app = FastAPI(title="MediGuard Backend", version="0.1.0")
+app = FastAPI(title="MedGuard Backend", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -81,12 +81,15 @@ class PatientMedicationsRequest(BaseModel):
 class MedicationAnalysisRequest(BaseModel):
     symptom_text: str = Field(..., min_length=2)
     medication_name: str | None = None
-    generate_report: bool = True
+    generate_report: bool = False
 
 
 class PatientProfileUpdateRequest(BaseModel):
     conditions: list[str] = Field(default_factory=list)
     medications: list[str] = Field(default_factory=list)
+    age: int | None = Field(default=None, ge=0, le=120)
+    blood_type: str | None = None
+    allergies: list[str] | None = None
 
 
 class CareMessageRequest(BaseModel):
@@ -204,6 +207,13 @@ def patient_profile(patient_id: str) -> dict:
 def patient_overview(patient_id: str) -> dict:
     patient = get_patient(patient_id)
     if not patient:
+        # Auto-create a minimal patient row for users who signed up but haven't done a check-in
+        user = get_user(patient_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="Patient not found")
+        update_patient_profile(patient_id, [], [])  # seeds the row via the auto-create logic
+        patient = get_patient(patient_id)
+    if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
     metadata = get_patient_metadata(patient_id)
     medication_plan = metadata.get("medication_plan", [])
@@ -251,13 +261,23 @@ def update_medications(patient_id: str, payload: PatientMedicationsRequest) -> d
 
 @app.patch("/patient/{patient_id}/profile")
 def update_patient_profile_endpoint(patient_id: str, payload: PatientProfileUpdateRequest) -> dict:
-    ok = update_patient_profile(patient_id, payload.conditions, payload.medications)
+    ok = update_patient_profile(
+        patient_id,
+        payload.conditions,
+        payload.medications,
+        age=payload.age,
+        blood_type=payload.blood_type,
+        allergies=payload.allergies,
+    )
     if not ok:
         raise HTTPException(status_code=404, detail="Patient not found")
     return {
         "patient_id": patient_id,
         "conditions": payload.conditions,
         "medications": payload.medications,
+        "age": payload.age,
+        "blood_type": payload.blood_type,
+        "allergies": payload.allergies or [],
     }
 
 

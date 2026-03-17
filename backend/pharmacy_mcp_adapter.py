@@ -6,9 +6,12 @@ import os
 from pathlib import Path
 from typing import Any
 
+import httpx
+
 
 _DPD_MODULE = None
 _PROFILE_CACHE: dict[str, dict[str, Any] | None] = {}
+_DPD_BASE_URL = "https://health-products.canada.ca/api/drug"
 
 
 def _enabled() -> bool:
@@ -29,17 +32,33 @@ def _load_dpd_server_module():
         return None
 
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    try:
+        spec.loader.exec_module(module)
+    except Exception:
+        # If FastMCP isn't installed, fall back to direct DPD HTTP calls.
+        return None
     _DPD_MODULE = module
     return _DPD_MODULE
 
 
+async def _dpd_request(endpoint: str, params: dict[str, Any]) -> dict | list | None:
+    params = {k: v for k, v in params.items() if v is not None}
+    timeout = httpx.Timeout(30.0, connect=10.0)
+    try:
+        async with httpx.AsyncClient(timeout=timeout, verify=False) as client:
+            response = await client.get(f"{_DPD_BASE_URL}/{endpoint}/", params=params)
+            response.raise_for_status()
+            return response.json()
+    except Exception:
+        return None
+
+
 def _timeout_seconds() -> float:
-    raw = os.getenv("PHARMACY_MCP_TIMEOUT_SECONDS", "1.8")
+    raw = os.getenv("PHARMACY_MCP_TIMEOUT_SECONDS", "12")
     try:
         return max(0.5, float(raw))
     except Exception:
-        return 1.8
+        return 12.0
 
 
 def _first(items: Any) -> dict[str, Any] | None:
@@ -77,20 +96,53 @@ def _pick_str(record: dict[str, Any], *keys: str) -> str | None:
 
 async def _lookup_medication_profile_async(medication_name: str) -> dict[str, Any] | None:
     dpd_server = _load_dpd_server_module()
-    if not dpd_server:
-        return None
+    use_http_fallback = dpd_server is None
 
-    try:
-        search_results = await asyncio.wait_for(
-            dpd_server.search_drug_by_brand_name(
-                brand_name=medication_name,
+    async def _search_brand(name: str) -> dict | list | None:
+        if not use_http_fallback:
+            return await dpd_server.search_drug_by_brand_name(
+                brand_name=name,
                 status=2,
                 lang="en",
                 type="json",
-            ),
-            timeout=_timeout_seconds(),
-        )
-        first_result = _first(search_results)
+            )
+        return await _dpd_request("drugproduct", {"brandname": name, "status": 2, "lang": "en", "type": "json"})
+
+    async def _search_ingredient(name: str) -> dict | list | None:
+        if not use_http_fallback:
+            return await dpd_server.search_active_ingredients(
+                ingredient_name=name,
+                lang="en",
+                type="json",
+            )
+        return await _dpd_request("activeingredient", {"ingredientname": name, "lang": "en", "type": "json"})
+
+    async def _get_schedule(drug_code: int) -> dict | list | None:
+        if not use_http_fallback:
+            return await dpd_server.get_schedule(drug_code=drug_code, active_only=True, lang="en", type="json")
+        return await _dpd_request("schedule", {"id": drug_code, "active": "yes", "lang": "en", "type": "json"})
+
+    async def _get_route(drug_code: int) -> dict | list | None:
+        if not use_http_fallback:
+            return await dpd_server.get_route_of_administration(drug_code=drug_code, active_only=True, lang="en", type="json")
+        return await _dpd_request("route", {"id": drug_code, "active": "yes", "lang": "en", "type": "json"})
+
+    async def _get_ingredients(drug_code: int) -> dict | list | None:
+        if not use_http_fallback:
+            return await dpd_server.get_active_ingredients(drug_code=drug_code, lang="en", type="json")
+        return await _dpd_request("activeingredient", {"id": drug_code, "lang": "en", "type": "json"})
+
+    async def _get_therapeutic(drug_code: int) -> dict | list | None:
+        if not use_http_fallback:
+            return await dpd_server.get_therapeutic_class(drug_code=drug_code, lang="en", type="json")
+        return await _dpd_request("therapeuticclass", {"id": drug_code, "lang": "en", "type": "json"})
+
+    try:
+        ingredient_results = await asyncio.wait_for(_search_ingredient(medication_name), timeout=_timeout_seconds())
+        first_result = _first(ingredient_results)
+        if not first_result:
+            search_results = await asyncio.wait_for(_search_brand(medication_name), timeout=_timeout_seconds())
+            first_result = _first(search_results)
         if not first_result:
             return None
 
@@ -98,11 +150,12 @@ async def _lookup_medication_profile_async(medication_name: str) -> dict[str, An
         if not drug_code:
             return None
 
-        schedule_data, route_data, ingredients_data = await asyncio.wait_for(
+        schedule_data, route_data, ingredients_data, therapeutic_data = await asyncio.wait_for(
             asyncio.gather(
-                dpd_server.get_schedule(drug_code=drug_code, active_only=True, lang="en", type="json"),
-                dpd_server.get_route_of_administration(drug_code=drug_code, active_only=True, lang="en", type="json"),
-                dpd_server.get_active_ingredients(drug_code=drug_code, lang="en", type="json"),
+                _get_schedule(drug_code),
+                _get_route(drug_code),
+                _get_ingredients(drug_code),
+                _get_therapeutic(drug_code),
                 return_exceptions=True,
             ),
             timeout=_timeout_seconds(),
@@ -138,6 +191,14 @@ async def _lookup_medication_profile_async(medication_name: str) -> dict[str, An
                     if value:
                         ingredients.append(value)
 
+        therapeutic_classes: list[str] = []
+        if isinstance(therapeutic_data, list):
+            for item in therapeutic_data[:5]:
+                if isinstance(item, dict):
+                    value = _pick_str(item, "tc_atc", "TC_ATC", "tc_atc_number", "TC_ATC_NUMBER")
+                    if value:
+                        therapeutic_classes.append(value)
+
         return {
             "dosage": dosage,
             "schedule": schedule_label,
@@ -145,6 +206,9 @@ async def _lookup_medication_profile_async(medication_name: str) -> dict[str, An
                 "unknown": "DPD connected. Side-effect timing is not provided by DPD directly."
             },
             "common_side_effects": ingredients or [f"Route: {route_label}"] if route_label != "Unknown" else [],
+            "active_ingredients": ingredients,
+            "therapeutic_classes": therapeutic_classes,
+            "route": route_label,
         }
     except Exception:
         return None
@@ -156,7 +220,10 @@ def lookup_medication_profile(medication_name: str) -> dict[str, Any] | None:
         return _PROFILE_CACHE[key]
 
     try:
-        result = asyncio.run(_lookup_medication_profile_async(medication_name))
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(asyncio.run, _lookup_medication_profile_async(medication_name))
+            result = future.result(timeout=_timeout_seconds() + 1)
         _PROFILE_CACHE[key] = result
         return result
     except Exception:

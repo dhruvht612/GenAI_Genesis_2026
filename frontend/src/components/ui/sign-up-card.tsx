@@ -87,7 +87,7 @@ export function SignUpCard({ onSubmit }: SignUpCardProps) {
               <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-white to-white/80">
                 Create account
               </h1>
-              <p className="text-white/60 text-xs">Join MediGuard</p>
+              <p className="text-white/60 text-xs">Join MedGuard</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">

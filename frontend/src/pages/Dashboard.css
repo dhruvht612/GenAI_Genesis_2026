@@ -1276,7 +1276,7 @@
 }
 
 .patient-daily-task-card {
-  background: linear-gradient(135deg, var(--secondary), #5a4a9e);
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
   color: white;
   border-radius: var(--radius-lg);
   padding: 1.5rem;
@@ -1286,14 +1286,15 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  box-shadow: 0 8px 24px rgba(124, 92, 191, 0.35);
+  box-shadow: 0 8px 24px var(--primary-glow);
 }
 
 .patient-daily-task-label {
   font-family: var(--font-mono);
   font-size: 0.7rem;
   letter-spacing: 0.08em;
-  opacity: 0.95;
+  color: white;
+  opacity: 1;
   margin-bottom: 0.35rem;
 }
 
@@ -1301,6 +1302,7 @@
   font-family: var(--font-heading);
   font-size: 1.25rem;
   font-weight: 700;
+  color: white;
   margin: 0;
 }
 
@@ -1308,8 +1310,9 @@
   position: absolute;
   bottom: 1rem;
   right: 1rem;
-  font-size: 1.5rem;
-  opacity: 0.9;
+  width: 1.5rem;
+  height: 1.5rem;
+  opacity: 0.85;
 }
 
 .patient-daily-task-link {

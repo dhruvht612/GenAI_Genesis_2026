@@ -114,7 +114,7 @@ def initialize_db() -> None:
             conn,
             user_id="MJ-2024",
             role="patient",
-            email="maria.chen@demo.mediguard.ca",
+            email="maria.chen@demo.medguard.ca",
             password="demo123",
             display_name="Maria Chen",
         )
@@ -122,7 +122,7 @@ def initialize_db() -> None:
             conn,
             user_id="DR-1001",
             role="doctor",
-            email="dr.smith@demo.mediguard.ca",
+            email="dr.smith@demo.medguard.ca",
             password="demo123",
             display_name="Dr. Smith",
         )
@@ -165,7 +165,7 @@ def _seed_demo_user(
     password: str,
     display_name: str,
 ) -> None:
-    existing = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+    existing = conn.execute("SELECT id FROM users WHERE email = ? OR id = ?", (email, user_id)).fetchone()
     if existing:
         return
 
@@ -202,7 +202,7 @@ def _seed_demo_patient_metadata() -> None:
         date_of_birth="1985-01-15",
         blood_type="O-",
         allergies=["Penicillin"],
-        contact={"email": "maria.chen@demo.mediguard.ca", "phone": "+1 (555) 123-4567"},
+        contact={"email": "maria.chen@demo.medguard.ca", "phone": "+1 (555) 123-4567"},
         location="Toronto, ON",
         medication_plan=demo_medication_plan,
         symptoms_log=symptoms,
@@ -483,27 +483,64 @@ def update_patient_medications(patient_id: str, medications: list[str]) -> bool:
     return True
 
 
-def update_patient_profile(patient_id: str, conditions: list[str], medications: list[str]) -> bool:
+def update_patient_profile(
+    patient_id: str,
+    conditions: list[str],
+    medications: list[str],
+    *,
+    age: int | None = None,
+    blood_type: str | None = None,
+    allergies: list[str] | None = None,
+) -> bool:
     cleaned_conditions = sorted({c.strip() for c in conditions if c and c.strip()})
     cleaned_medications = sorted({m.strip() for m in medications if m and m.strip()})
+    cleaned_allergies = sorted({a.strip() for a in (allergies or []) if a and a.strip()})
 
     with _connect() as conn:
-        row = conn.execute("SELECT id FROM patients WHERE id = ?", (patient_id,)).fetchone()
+        row = conn.execute("SELECT id, age FROM patients WHERE id = ?", (patient_id,)).fetchone()
         if not row:
-            return False
+            # New user who has not done a check-in yet - look up their display name from users table
+            user_row = conn.execute("SELECT display_name FROM users WHERE id = ?", (patient_id,)).fetchone()
+            if not user_row:
+                return False
+            display_name = user_row[0] or "Patient"
+            conn.execute(
+                """
+                INSERT INTO patients (id, name, age, assigned_doctor_id, conditions_json, medications_json,
+                    profiles_json, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (patient_id, display_name, age or 0, "DR-1001",
+                 json.dumps(cleaned_conditions), json.dumps(cleaned_medications),
+                 "{}", datetime.now(UTC).isoformat()),
+            )
+            conn.commit()
+            # Re-fetch so the metadata block below can proceed
+            row = conn.execute("SELECT id, age FROM patients WHERE id = ?", (patient_id,)).fetchone()
+
+        current_age = int(row["age"]) if row and row["age"] is not None else 0
+        next_age = age if age is not None else current_age
 
         conn.execute(
             """
             UPDATE patients
-            SET conditions_json = ?, medications_json = ?
+            SET conditions_json = ?, medications_json = ?, age = ?
             WHERE id = ?
             """,
-            (json.dumps(cleaned_conditions), json.dumps(cleaned_medications), patient_id),
+            (json.dumps(cleaned_conditions), json.dumps(cleaned_medications), next_age, patient_id),
         )
 
         existing_meta = conn.execute(
             "SELECT * FROM patient_metadata WHERE patient_id = ?", (patient_id,)
         ).fetchone()
+
+        existing_blood = existing_meta["blood_type"] if existing_meta else None
+        existing_allergies = (
+            json.loads(existing_meta["allergies_json"]) if existing_meta and existing_meta["allergies_json"] else []
+        )
+
+        next_blood = blood_type if blood_type is not None else existing_blood
+        next_allergies = cleaned_allergies if allergies is not None else existing_allergies
 
         default_plan = [
             {
@@ -519,10 +556,16 @@ def update_patient_profile(patient_id: str, conditions: list[str], medications: 
             conn.execute(
                 """
                 UPDATE patient_metadata
-                SET medication_plan_json = ?, updated_at = ?
+                SET blood_type = ?, allergies_json = ?, medication_plan_json = ?, updated_at = ?
                 WHERE patient_id = ?
                 """,
-                (json.dumps(default_plan), datetime.now(UTC).isoformat(), patient_id),
+                (
+                    next_blood,
+                    json.dumps(next_allergies),
+                    json.dumps(default_plan),
+                    datetime.now(UTC).isoformat(),
+                    patient_id,
+                ),
             )
         else:
             conn.execute(
@@ -535,8 +578,8 @@ def update_patient_profile(patient_id: str, conditions: list[str], medications: 
                 (
                     patient_id,
                     None,
-                    None,
-                    json.dumps([]),
+                    next_blood,
+                    json.dumps(next_allergies),
                     json.dumps({}),
                     None,
                     json.dumps(default_plan),
@@ -719,6 +762,9 @@ def list_patients_by_doctor(doctor_id: str) -> list[dict[str, Any]]:
         assessment = json.loads(row["latest_assessment_json"]) if row["latest_assessment_json"] else None
         conditions = json.loads(row["conditions_json"])
         medications = json.loads(row["medications_json"])
+        metadata = get_patient_metadata(row["id"])
+        blood_type = metadata.get("blood_type")
+        allergies = metadata.get("allergies", [])
         severity = (assessment or {}).get("severity_score") or (row["risk_score"] or 0)
         if severity >= 7:
             risk = "high"
@@ -733,6 +779,8 @@ def list_patients_by_doctor(doctor_id: str) -> list[dict[str, Any]]:
                 "age": int(row["age"]),
                 "conditions": conditions,
                 "medications": medications,
+                "blood_type": blood_type,
+                "allergies": allergies,
                 "risk": risk,
                 "risk_score": int(severity),
                 "latest_assessment": assessment,

@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
+import { ClipboardList, Smartphone, CheckCircle, Pill, Calendar, FileText, Eye, Bot, Link2 } from 'lucide-react';
 import './Landing.css';
 
 export default function Landing() {
@@ -24,11 +25,14 @@ export default function Landing() {
         <div className="hero-inner w-full max-w-[1200px] mx-auto px-4">
           <section className="hero">
             <div className="hero-content">
+              <div className="hero-logo-lockup">
+                <img src="/medguard.png" alt="MedGuard" className="hero-logo-large" />
+              </div>
               <h1 className="hero-headline">
                 Your medications, <em>proactively</em> managed.
               </h1>
               <p className="hero-sub">
-                MediGuard reaches out to you at the exact moment side effects are likely — not after. Powered by agentic AI, built for Canadians.
+                MedGuard reaches out to you at the exact moment side effects are likely — not after. Powered by agentic AI, built for Canadians.
               </p>
               <div className="hero-ctas">
                 <button type="button" className="btn btn-primary" onClick={() => navigate('/signup')}>
@@ -87,19 +91,19 @@ export default function Landing() {
         <div className="steps">
           <div className="step-card" style={{ animationDelay: '0.1s' }}>
             <span className="step-num">01</span>
-            <span className="step-icon">📋</span>
+            <ClipboardList className="step-icon" />
             <h3>Load Your Profile</h3>
             <p>Enter medications once. PharmacyMCP pulls the full clinical profile including side effect windows.</p>
           </div>
           <div className="step-card" style={{ animationDelay: '0.2s' }}>
             <span className="step-num">02</span>
-            <span className="step-icon">📱</span>
+            <Smartphone className="step-icon" />
             <h3>Agent Reaches Out</h3>
             <p>At peak side-effect windows, the AI initiates the check-in. You don&apos;t have to remember.</p>
           </div>
           <div className="step-card" style={{ animationDelay: '0.3s' }}>
             <span className="step-num">03</span>
-            <span className="step-icon">✅</span>
+            <CheckCircle className="step-icon" />
             <h3>Smart Action Taken</h3>
             <p>Minor symptoms get OTC suggestions. Severe ones trigger an auto-generated doctor report.</p>
           </div>
@@ -112,17 +116,17 @@ export default function Landing() {
           <div className="view-card view-patient">
             <div className="view-card-header">Patient View</div>
             <ul>
-              <li><span className="view-icon">💊</span> Track medications & side effects</li>
-              <li><span className="view-icon">📅</span> Proactive check-ins at the right time</li>
-              <li><span className="view-icon">📄</span> Share reports with your doctor</li>
+              <li><Pill className="view-icon" /> Track medications & side effects</li>
+              <li><Calendar className="view-icon" /> Proactive check-ins at the right time</li>
+              <li><FileText className="view-icon" /> Share reports with your doctor</li>
             </ul>
           </div>
           <div className="view-card view-doctor">
             <div className="view-card-header">Doctor View</div>
             <ul>
-              <li><span className="view-icon">👁</span> See patient summaries & trends</li>
-              <li><span className="view-icon">🤖</span> AI-generated reports ready to review</li>
-              <li><span className="view-icon">🔗</span> One portal for all chronic patients</li>
+              <li><Eye className="view-icon" /> See patient summaries & trends</li>
+              <li><Bot className="view-icon" /> AI-generated reports ready to review</li>
+              <li><Link2 className="view-icon" /> One portal for all chronic patients</li>
             </ul>
           </div>
         </div>
@@ -132,7 +136,7 @@ export default function Landing() {
         <h2>What People Say</h2>
         <div className="testimonial-cards">
           <div className="testimonial-card">
-            <blockquote>&ldquo;I finally stopped forgetting to report my dizziness. MediGuard asked me at the right time.&rdquo;</blockquote>
+            <blockquote>&ldquo;I finally stopped forgetting to report my dizziness. MedGuard asked me at the right time.&rdquo;</blockquote>
             <cite>— Maria C., Toronto</cite>
           </div>
           <div className="testimonial-card">
@@ -160,11 +164,11 @@ export default function Landing() {
 
       <footer className="landing-footer">
         <Link to="/" className="footer-logo">
-          <img className="nav-logo-icon" src="/medguard.png" alt="MediGuard logo" />
-          <span className="nav-logo-wordmark">MediGuard</span>
+          <img className="nav-logo-icon" src="/medguard.png" alt="MedGuard logo" />
+          <span className="nav-logo-wordmark">MedGuard</span>
         </Link>
-        <p className="footer-copy">© {new Date().getFullYear()} MediGuard. Built in 12 hours · Sun Life Hackathon</p>
-        <span className="footer-badge">Built in 12 hours · Sun Life Hackathon</span>
+        <p className="footer-copy">© {new Date().getFullYear()} MedGuard · Sun Life prize track</p>
+        <span className="footer-badge">Built in 12 hours · GenAI Genesis</span>
       </footer>
       </div>
       </div>

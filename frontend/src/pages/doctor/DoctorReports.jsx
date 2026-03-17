@@ -14,7 +14,7 @@ const REPORT_TYPES = [
 
 export default function DoctorReports() {
   const location = useLocation();
-  const doctorId = sessionStorage.getItem('mediguard_user_id') || '';
+  const doctorId = sessionStorage.getItem('medguard_user_id') || '';
   const incomingPatientId = location.state?.patientId || null;
   const [reports, setReports] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -23,6 +23,7 @@ export default function DoctorReports() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [medValidation, setMedValidation] = useState(null);
+  const [patientDetails, setPatientDetails] = useState(null);
   const [symptomText, setSymptomText] = useState('');
   const [medicationName, setMedicationName] = useState('');
   const [medicationAnalysis, setMedicationAnalysis] = useState(null);
@@ -85,6 +86,30 @@ export default function DoctorReports() {
   }, [selected?.patient_id]);
 
   useEffect(() => {
+    if (!selected?.patient_id) {
+      setPatientDetails(null);
+      return;
+    }
+
+    const loadDetails = async () => {
+      try {
+        const res = await fetch(`${API}/patient/${selected.patient_id}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.detail || 'Failed to load patient details');
+        setPatientDetails({
+          age: data.age,
+          bloodType: data?.metadata?.blood_type || 'Unknown',
+          allergies: (data?.metadata?.allergies || []).join(', ') || 'None listed',
+        });
+      } catch {
+        setPatientDetails(null);
+      }
+    };
+
+    loadDetails();
+  }, [selected?.patient_id]);
+
+  useEffect(() => {
     if (!doctorId || !selected?.patient_id) {
       setThread([]);
       return;
@@ -124,7 +149,6 @@ export default function DoctorReports() {
         body: JSON.stringify({
           symptom_text: symptomText.trim(),
           medication_name: medicationName || null,
-          generate_report: true,
         }),
       });
       const data = await res.json();
@@ -227,15 +251,16 @@ export default function DoctorReports() {
               placeholder="e.g. Patient reports shortness of breath and chest tightness after evening dose"
             />
             <button type="button" className="btn-doctor btn-doctor-primary" onClick={runMedicationAnalysis} disabled={analyzing || !symptomText.trim()}>
-              {analyzing ? 'Analyzing...' : 'Run Medication Relevance AI'}
+              {analyzing ? 'Checking...' : 'Check Relevance'}
             </button>
             {analysisError && <p className="report-ai-intro" style={{ color: '#b91c1c' }}>{analysisError}</p>}
             {medicationAnalysis && (
               <div className="report-ai-summary" style={{ marginTop: '0.75rem' }}>
-                <p><strong>Compatibility:</strong> {medicationAnalysis.compatibility}</p>
-                <p><strong>Matched side effects:</strong> {(medicationAnalysis.matched_side_effects || []).join(', ') || 'None identified'}</p>
-                <p><strong>AI summary:</strong> {medicationAnalysis.ai_summary}</p>
-                {medicationAnalysis.report_generated && <p><strong>Doctor report:</strong> A new report has been generated.</p>}
+                <p><strong>Relevance:</strong> {medicationAnalysis.relevance}</p>
+                <p><strong>Medication verified:</strong> {medicationAnalysis.medication_verified_in_pharmacy_mcp ? 'Yes (PharmacyMCP)' : 'No'}</p>
+                {medicationAnalysis.relevance_reason && <p><strong>Reason:</strong> {medicationAnalysis.relevance_reason}</p>}
+                <p><strong>Matched symptom terms:</strong> {(medicationAnalysis.symptom_matches || []).join(', ') || 'None identified'}</p>
+                <p><strong>Matched medication terms:</strong> {(medicationAnalysis.medication_matches || []).join(', ') || 'None identified'}</p>
               </div>
             )}
           </div>
@@ -279,6 +304,13 @@ export default function DoctorReports() {
                 <strong>{selected.patient_name}</strong>
                 <span>Patient ID: {selected.patient_id}</span>
               </div>
+              {patientDetails && (
+                <div className="reports-selected-meta">
+                  <span>Age: {patientDetails.age ?? 'Unknown'}</span>
+                  <span>Blood: {patientDetails.bloodType}</span>
+                  <span>Allergies: {patientDetails.allergies}</span>
+                </div>
+              )}
               <span className={`badge ${selected.urgency === 'high' ? 'badge-danger' : selected.urgency === 'medium' ? 'badge-warning' : 'badge-success'}`}>
                 {(selected.urgency || 'low').toUpperCase()} risk
               </span>

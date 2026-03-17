@@ -14,8 +14,8 @@ export default function Nav() {
     <nav className="nav">
       <div className="nav-inner">
         <Link to="/" className="nav-logo">
-          <img className="nav-logo-icon" src="/medguard.png" alt="MediGuard logo" />
-          <span className="nav-logo-wordmark">MediGuard</span>
+          <img className="nav-logo-icon" src="/medguard.png" alt="MedGuard logo" />
+          <span className="nav-logo-wordmark">MedGuard</span>
         </Link>
         {!isAuthPage && (
           <ul className="nav-links">

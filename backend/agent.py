@@ -82,6 +82,133 @@ def _side_effect_matches(symptom_text: str, side_effects: list[str]) -> list[str
     return matches
 
 
+_SYMPTOM_KEYWORDS: dict[str, list[str]] = {
+    "pain": [
+        "pain",
+        "ache",
+        "back pain",
+        "backpain",
+        "headache",
+        "migraine",
+        "cramp",
+        "sore",
+        "arthritis",
+        "inflammation",
+        "swelling",
+        "sprain",
+        "strain",
+        "joint",
+        "muscle pain",
+    ],
+    "fever": ["fever", "temperature", "chills"],
+    "allergy": ["allergy", "allergic", "hives", "rash", "itch", "itchy", "sneezing", "runny nose", "rhinitis"],
+    "cough_cold": ["cough", "coughing", "cold", "congestion", "sinus", "flu", "sore throat", "phlegm"],
+    "asthma": ["asthma", "wheeze", "wheezing", "shortness of breath", "bronch", "inhaler"],
+    "infection": ["infection", "infected", "bacterial", "antibiotic", "uti", "pneumonia"],
+    "nausea": ["nausea", "vomit", "vomiting", "emesis", "queasy"],
+    "reflux": ["heartburn", "acid reflux", "gerd", "indigestion"],
+    "diarrhea": ["diarrhea", "loose stool"],
+    "hypertension": ["blood pressure", "hypertension", "bp"],
+    "cholesterol": ["cholesterol", "lipid", "ldl", "statin"],
+    "diabetes": ["diabetes", "blood sugar", "glucose"],
+    "sleep": ["sleep", "insomnia"],
+    "anxiety": ["anxiety", "panic", "stress"],
+    "depression": ["depression", "depressed"],
+    "spasm": ["spasm", "muscle spasm"],
+}
+
+_MED_CLASS_KEYWORDS: dict[str, list[str]] = {
+    "pain": ["analgesic", "anti-inflammatory", "antiinflammatory", "nsaid", "non-steroidal", "antipyretic", "muscle relaxant"],
+    "fever": ["antipyretic", "analgesic"],
+    "allergy": ["antihistamine", "anti-histamine", "anti-allergic"],
+    "cough_cold": ["antitussive", "expectorant", "decongestant", "antihistamine"],
+    "asthma": ["bronchodilator", "beta-agonist", "corticosteroid", "respiratory", "asthma"],
+    "infection": ["antibacterial", "antibiotic", "antimicrobial", "antiviral", "anti-infective"],
+    "nausea": ["antiemetic"],
+    "reflux": ["proton pump", "h2 blocker", "antacid", "antiulcer"],
+    "diarrhea": ["antidiarrheal"],
+    "hypertension": ["antihypertensive", "beta-blocker", "ace inhibitor", "angiotensin", "calcium channel", "diuretic"],
+    "cholesterol": ["statin", "lipid-lowering", "hypolipidemic"],
+    "diabetes": ["antidiabetic", "hypoglycemic", "insulin"],
+    "sleep": ["hypnotic", "sedative"],
+    "anxiety": ["anxiolytic", "benzodiazepine"],
+    "depression": ["antidepressant"],
+    "spasm": ["muscle relaxant"],
+}
+
+_INGREDIENT_CATEGORY_MAP: dict[str, list[str]] = {
+    "ibuprofen": ["pain", "fever"],
+    "acetaminophen": ["pain", "fever"],
+    "paracetamol": ["pain", "fever"],
+    "naproxen": ["pain", "fever"],
+    "diclofenac": ["pain", "fever"],
+    "ketorolac": ["pain", "fever"],
+    "amoxicillin": ["infection"],
+    "azithromycin": ["infection"],
+    "doxycycline": ["infection"],
+    "ciprofloxacin": ["infection"],
+    "loratadine": ["allergy"],
+    "cetirizine": ["allergy"],
+    "fexofenadine": ["allergy"],
+    "albuterol": ["asthma"],
+    "salbutamol": ["asthma"],
+    "omeprazole": ["reflux"],
+    "pantoprazole": ["reflux"],
+    "ondansetron": ["nausea"],
+    "loperamide": ["diarrhea"],
+    "metformin": ["diabetes"],
+    "insulin": ["diabetes"],
+    "atorvastatin": ["cholesterol"],
+    "rosuvastatin": ["cholesterol"],
+    "simvastatin": ["cholesterol"],
+    "lisinopril": ["hypertension"],
+    "amlodipine": ["hypertension"],
+    "hydrochlorothiazide": ["hypertension"],
+}
+
+
+def _match_keywords(text: str, keywords: list[str]) -> list[str]:
+    hits: list[str] = []
+    for keyword in keywords:
+        key = keyword.lower()
+        if " " in key:
+            if key in text:
+                hits.append(keyword)
+            continue
+        if re.search(rf"\\b{re.escape(key)}\\b", text):
+            hits.append(keyword)
+    return hits
+
+
+def _flatten_unique(items: list[str]) -> list[str]:
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for item in items:
+        key = item.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        ordered.append(item)
+    return ordered
+
+
+def _extract_medication_candidate(user_text: str) -> str | None:
+    text = user_text.lower()
+    tokens = [t for t in re.split(r"[^a-z0-9]+", text) if t]
+    trigger_words = {"use", "take", "taking", "took", "using", "on", "start", "started"}
+    stop_words = {"for", "because", "due", "with", "to", "of", "and", "or"}
+
+    for idx, token in enumerate(tokens):
+        if token not in trigger_words:
+            continue
+        for next_token in tokens[idx + 1 : idx + 4]:
+            if next_token in stop_words:
+                break
+            if len(next_token) >= 3:
+                return next_token
+    return None
+
+
 def _env_flag(name: str, default: bool = False) -> bool:
     raw = os.getenv(name)
     if raw is None:
@@ -132,7 +259,7 @@ def _gemini_response(
         return None
 
     prompt = (
-        "You are MediGuard, a concise health concierge for demo use. "
+        "You are MedGuard, a concise health concierge for demo use. "
         "Do not diagnose. Keep response under 70 words. "
         f"Patient: {patient.name}, age {patient.age}. "
         f"Conditions: {', '.join(patient.conditions)}. "
@@ -288,86 +415,88 @@ def analyze_medication_case(
     chosen_medication = (medication_name or "").strip()
     if not chosen_medication:
         extracted = _extract_medication_from_text(symptom_text, patient.medications)
-        chosen_medication = extracted or (patient.medications[0] if patient.medications else "")
+        chosen_medication = extracted or _extract_medication_candidate(symptom_text) or ""
 
-    assessment = assess_symptoms(
-        user_text=symptom_text,
-        medications=patient.medications,
-        conditions=patient.conditions,
-    )
+    if not chosen_medication:
+        raise ValueError("Medication name is required for relevance check.")
 
-    mcp_profile, matched_variant = _lookup_mcp_with_variants(chosen_medication) if chosen_medication else (None, None)
-    fallback_profile = _lookup_mock_with_variants(chosen_medication) if chosen_medication else None
-    source = mcp_profile or fallback_profile or {}
+    mcp_profile, matched_variant = _lookup_mcp_with_variants(chosen_medication)
+    if not mcp_profile:
+        return {
+            "patient_id": patient.id,
+            "medication": chosen_medication,
+            "matched_name": matched_variant,
+            "medication_verified_in_pharmacy_mcp": False,
+            "relevance": "unknown",
+            "compatibility": "unknown",
+            "relevance_reason": "Medication not verified in PharmacyMCP.",
+            "symptom_matches": [],
+            "medication_matches": [],
+            "symptom_categories": [],
+            "medication_categories": [],
+            "therapeutic_classes": [],
+            "active_ingredients": [],
+        }
 
-    side_effects = source.get("common_side_effects", [])
-    matched_effects = _side_effect_matches(symptom_text, side_effects)
+    therapeutic_classes = mcp_profile.get("therapeutic_classes") or []
+    active_ingredients = mcp_profile.get("active_ingredients") or []
 
-    if mcp_profile and matched_effects:
-        compatibility = "high"
-    elif mcp_profile or matched_effects:
-        compatibility = "medium"
+    symptom_text_l = symptom_text.lower()
+    symptom_matches: list[str] = []
+    symptom_categories: set[str] = set()
+    for category, keywords in _SYMPTOM_KEYWORDS.items():
+        hits = _match_keywords(symptom_text_l, keywords)
+        if hits:
+            symptom_categories.add(category)
+            symptom_matches.extend(hits)
+
+    med_text = " ".join([*therapeutic_classes, *active_ingredients]).lower()
+    medication_matches: list[str] = []
+    medication_categories: set[str] = set()
+    for category, keywords in _MED_CLASS_KEYWORDS.items():
+        hits = _match_keywords(med_text, keywords)
+        if hits:
+            medication_categories.add(category)
+            medication_matches.extend(hits)
+
+    for ingredient in active_ingredients:
+        ing_l = ingredient.lower()
+        for ing_kw, categories in _INGREDIENT_CATEGORY_MAP.items():
+            if ing_kw in ing_l:
+                medication_matches.append(ingredient)
+                for cat in categories:
+                    medication_categories.add(cat)
+
+    symptom_matches = _flatten_unique(symptom_matches)
+    medication_matches = _flatten_unique(medication_matches)
+
+    if not symptom_categories:
+        relevance = "unknown"
+        reason = "No recognizable symptom keywords were found."
+    elif not medication_categories:
+        relevance = "low"
+        reason = "No therapeutic class or ingredient link matched those symptoms."
+    elif symptom_categories & medication_categories:
+        relevance = "high"
+        reason = "Symptoms align with the medication's therapeutic class or ingredients."
     else:
-        compatibility = "low"
-
-    if mcp_profile:
-        assessment["rationale"].append(
-            f"PharmacyMCP verified {chosen_medication} (matched as {matched_variant}); matched side effects: {', '.join(matched_effects) or 'none'}"
-        )
-    elif chosen_medication:
-        assessment["rationale"].append(
-            f"PharmacyMCP did not verify {chosen_medication}; treat medication name as unverified until clinician confirmation."
-        )
-
-    patient.latest_assessment = assessment
-    upsert_patient(patient)
-    update_latest_assessment(patient.id, assessment)
-    update_risk_score(patient.id, assessment["severity_score"])
-
-    pharmacy_context = None
-    if chosen_medication and source:
-        pharmacy_context = (
-            f"{chosen_medication}: dosage={source.get('dosage', 'unknown')}, "
-            f"schedule={source.get('schedule', 'unknown')}, "
-            f"highlights={', '.join(side_effects[:3]) or 'none'}"
-        )
-
-    ai_summary = _gemini_response(patient, symptom_text, assessment, pharmacy_context) or _rule_based_response(patient, assessment)
-
-    report_text: str | None = None
-    should_generate = generate_report_now or compatibility == "high" or assessment.get("severity_score", 0) >= 7
-    if should_generate:
-        med_display = [f"{p.name} {p.dosage}".strip() for p in patient.profiles] if patient.profiles else patient.medications
-        report_text = generate_doctor_report(
-            patient_name=patient.name,
-            age=patient.age,
-            conditions=patient.conditions,
-            medications=med_display,
-            symptom_text=symptom_text,
-            assessment=assessment,
-        )
-        patient.latest_report = report_text
-        upsert_patient(patient)
-        add_report_event(
-            patient_id=patient.id,
-            report_text=report_text,
-            urgency=assessment.get("urgency"),
-            severity_score=assessment.get("severity_score"),
-        )
+        relevance = "low"
+        reason = "Medication class did not match the symptom categories."
 
     return {
         "patient_id": patient.id,
-        "medication": chosen_medication or None,
+        "medication": chosen_medication,
         "matched_name": matched_variant,
-        "medication_verified_in_pharmacy_mcp": bool(mcp_profile),
-        "used_fallback_profile": bool(fallback_profile) and not bool(mcp_profile),
-        "possible_symptom_link": bool(matched_effects),
-        "compatibility": compatibility,
-        "matched_side_effects": matched_effects,
-        "assessment": assessment,
-        "ai_summary": ai_summary,
-        "report_generated": bool(report_text),
-        "report": report_text,
+        "medication_verified_in_pharmacy_mcp": True,
+        "relevance": relevance,
+        "compatibility": relevance,
+        "relevance_reason": reason,
+        "symptom_matches": symptom_matches,
+        "medication_matches": medication_matches,
+        "symptom_categories": sorted(symptom_categories),
+        "medication_categories": sorted(medication_categories),
+        "therapeutic_classes": therapeutic_classes,
+        "active_ingredients": active_ingredients,
     }
 
 

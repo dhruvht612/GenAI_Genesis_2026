@@ -222,9 +222,11 @@ export function TravelConnectSignIn({
                 transition={{ delay: 0.6, duration: 0.5 }}
                 className="mb-6"
               >
-                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-200">
-                  <span className="text-white font-bold text-lg">M</span>
-                </div>
+                <img
+                  src="/medguard.png"
+                  alt="MedGuard"
+                  className="h-16 w-16 object-contain drop-shadow-md"
+                />
               </motion.div>
               <motion.h2
                 initial={{ opacity: 0, y: -20 }}
@@ -232,7 +234,7 @@ export function TravelConnectSignIn({
                 transition={{ delay: 0.7, duration: 0.5 }}
                 className="text-3xl font-bold mb-2 text-center text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600"
               >
-                MediGuard
+                MedGuard
               </motion.h2>
               <motion.p
                 initial={{ opacity: 0, y: -20 }}

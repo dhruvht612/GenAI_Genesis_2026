@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { BarChart2, Pill, Bot, AlertTriangle, CheckCircle, ArrowRight } from 'lucide-react';
 import './PatientRiskAssessment.css';
 
 const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
@@ -19,7 +20,7 @@ export default function PatientRiskScore() {
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState('');
 
-  const patientId = sessionStorage.getItem('mediguard_user_id') || '';
+  const patientId = sessionStorage.getItem('medguard_user_id') || '';
 
   useEffect(() => {
     if (!patientId) { setLoading(false); return; }
@@ -57,7 +58,6 @@ export default function PatientRiskScore() {
         body: JSON.stringify({
           symptom_text: symptomText.trim(),
           medication_name: selectedMedication || null,
-          generate_report: true,
         }),
       });
       const data = await res.json();
@@ -73,7 +73,7 @@ export default function PatientRiskScore() {
   return (
     <div className="patient-page patient-risk page-enter">
       <div className="risk-header">
-        <span className="risk-header-icon">📊</span>
+        <BarChart2 className="risk-header-icon" style={{ width: '2rem', height: '2rem', color: 'var(--primary)' }} />
         <h1 className="risk-title">Risk Score</h1>
         <p className="risk-subtitle">Your current health risk level based on the latest AI assessment</p>
       </div>
@@ -105,10 +105,10 @@ export default function PatientRiskScore() {
           <div className="risk-right">
             <div className="dashboard-card risk-form-card">
               <div className="risk-means-header">
-                <span className="risk-means-icon">💊</span>
+                <Pill className="risk-means-icon" style={{ width: '1.25rem', height: '1.25rem', color: 'var(--primary)' }} />
                 <h2>Medication Relevance Check</h2>
               </div>
-              <p className="risk-means-intro">Describe your current symptom. AI will check if it may be linked to your medication profile.</p>
+              <p className="risk-means-intro">Describe your current symptom. PharmacyMCP will check if the medication is relevant.</p>
               <div className="risk-analyze-form">
                 <label>
                   Medication (optional)
@@ -128,25 +128,25 @@ export default function PatientRiskScore() {
                 </label>
                 <div className="risk-actions">
                   <button type="button" className="btn-risk-primary" disabled={analyzing || !symptomText.trim()} onClick={analyzeMedicationRelevance}>
-                    {analyzing ? 'Analyzing...' : 'Analyze Symptom'}
+                    {analyzing ? 'Checking...' : 'Check Relevance'}
                   </button>
                 </div>
               </div>
               {analysisError && <p className="risk-error-text">{analysisError}</p>}
               {analysis && (
                 <div className="risk-validation-summary">
-                  <p><strong>Compatibility:</strong> {analysis.compatibility}</p>
-                  <p><strong>Medication verified:</strong> {analysis.medication_verified_in_pharmacy_mcp ? 'Yes (PharmacyMCP)' : 'No / fallback data used'}</p>
-                  <p><strong>Matched side effects:</strong> {(analysis.matched_side_effects || []).join(', ') || 'None identified'}</p>
-                  <p><strong>AI summary:</strong> {analysis.ai_summary}</p>
-                  {analysis.report_generated && <p><strong>Doctor report:</strong> Generated and shared with your doctor dashboard.</p>}
+                  <p><strong>Relevance:</strong> {analysis.relevance}</p>
+                  <p><strong>Medication verified:</strong> {analysis.medication_verified_in_pharmacy_mcp ? 'Yes (PharmacyMCP)' : 'No'}</p>
+                  {analysis.relevance_reason && <p><strong>Reason:</strong> {analysis.relevance_reason}</p>}
+                  <p><strong>Matched symptom terms:</strong> {(analysis.symptom_matches || []).join(', ') || 'None identified'}</p>
+                  <p><strong>Matched medication terms:</strong> {(analysis.medication_matches || []).join(', ') || 'None identified'}</p>
                 </div>
               )}
             </div>
 
             <div className="dashboard-card risk-means-card">
               <div className="risk-means-header">
-                <span className="risk-means-icon">🤖</span>
+                <Bot className="risk-means-icon" style={{ width: '1.25rem', height: '1.25rem', color: 'var(--primary)' }} />
                 <h2>Latest Assessment</h2>
               </div>
               {assessment ? (
@@ -180,21 +180,21 @@ export default function PatientRiskScore() {
                 )}
                 {riskScore !== null && riskScore >= 7 && (
                   <>
-                    <li><span className="risk-check">⚠</span>Contact your doctor promptly — high severity detected.</li>
-                    <li><span className="risk-check">⚠</span>A doctor report has been automatically generated.</li>
-                    <li><span className="risk-check">✓</span>Monitor symptoms and seek in-person care if they worsen.</li>
+                    <li><AlertTriangle className="risk-check" style={{width:'1rem',height:'1rem',color:'#ef4444',flexShrink:0}} />Contact your doctor promptly — high severity detected.</li>
+                    <li><AlertTriangle className="risk-check" style={{width:'1rem',height:'1rem',color:'#ef4444',flexShrink:0}} />A doctor report has been automatically generated.</li>
+                    <li><CheckCircle className="risk-check" style={{width:'1rem',height:'1rem',color:'#10b981',flexShrink:0}} />Monitor symptoms and seek in-person care if they worsen.</li>
                   </>
                 )}
                 {riskScore !== null && riskScore >= 4 && riskScore < 7 && (
                   <>
-                    <li><span className="risk-check">✓</span>Monitor your symptoms and continue medications as prescribed.</li>
-                    <li><span className="risk-check">✓</span>Check in again tomorrow using AI Check-In.</li>
+                    <li><CheckCircle className="risk-check" style={{width:'1rem',height:'1rem',color:'#10b981',flexShrink:0}} />Monitor your symptoms and continue medications as prescribed.</li>
+                    <li><CheckCircle className="risk-check" style={{width:'1rem',height:'1rem',color:'#10b981',flexShrink:0}} />Check in again tomorrow using AI Check-In.</li>
                   </>
                 )}
                 {riskScore !== null && riskScore < 4 && (
                   <>
-                    <li><span className="risk-check">✅</span>Your risk level is low — keep up your medication routine.</li>
-                    <li><span className="risk-check">✓</span>Continue daily AI Check-Ins for ongoing monitoring.</li>
+                    <li><CheckCircle className="risk-check" style={{width:'1rem',height:'1rem',color:'#10b981',flexShrink:0}} />Your risk level is low — keep up your medication routine.</li>
+                    <li><CheckCircle className="risk-check" style={{width:'1rem',height:'1rem',color:'#10b981',flexShrink:0}} />Continue daily AI Check-Ins for ongoing monitoring.</li>
                   </>
                 )}
               </ul>

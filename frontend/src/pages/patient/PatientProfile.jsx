@@ -10,12 +10,15 @@ export default function PatientProfile() {
   const [overview, setOverview] = useState(null);
   const [conditions, setConditions] = useState([]);
   const [medications, setMedications] = useState([]);
+  const [ageInput, setAgeInput] = useState('');
+  const [bloodType, setBloodType] = useState('');
+  const [allergies, setAllergies] = useState([]);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileStatus, setProfileStatus] = useState('');
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
-    const patientId = sessionStorage.getItem('mediguard_user_id');
+    const patientId = sessionStorage.getItem('medguard_user_id');
     if (!patientId) return;
 
     const load = async () => {
@@ -33,7 +36,7 @@ export default function PatientProfile() {
   }, []);
 
   const reloadOverview = async () => {
-    const id = sessionStorage.getItem('mediguard_user_id');
+    const id = sessionStorage.getItem('medguard_user_id');
     if (!id) return;
     const res = await fetch(`${API}/patient/${id}/overview`);
     const data = await res.json();
@@ -41,8 +44,8 @@ export default function PatientProfile() {
     setOverview(data);
   };
 
-  const displayName = overview?.name || sessionStorage.getItem('mediguard_displayName') || 'Patient';
-  const patientId = overview?.patient_id || sessionStorage.getItem('mediguard_user_id') || 'N/A';
+  const displayName = overview?.name || sessionStorage.getItem('medguard_displayName') || 'Patient';
+  const patientId = overview?.patient_id || sessionStorage.getItem('medguard_user_id') || 'N/A';
   const contact = overview?.contact || {};
   const meds = overview?.medication_plan || [];
   const conditionsList = overview?.conditions || [];
@@ -51,10 +54,13 @@ export default function PatientProfile() {
     if (!overview) return;
     setConditions(overview.conditions || []);
     setMedications(overview.medications || []);
+    setAgeInput(overview.age ? String(overview.age) : '');
+    setBloodType(overview.blood_type || '');
+    setAllergies(overview.allergies || []);
   }, [overview]);
 
   const saveClinicalProfile = async () => {
-    const id = sessionStorage.getItem('mediguard_user_id');
+    const id = sessionStorage.getItem('medguard_user_id');
     if (!id) return;
 
     setSavingProfile(true);
@@ -63,11 +69,22 @@ export default function PatientProfile() {
       const res = await fetch(`${API}/patient/${id}/profile`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conditions, medications }),
+        body: JSON.stringify({
+          conditions,
+          medications,
+          age: ageInput ? Number(ageInput) : null,
+          blood_type: bloodType || null,
+          allergies,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.detail || 'Failed to save profile');
       setProfileStatus('Profile updated');
+      if (ageInput) {
+        sessionStorage.setItem('medguard_age', ageInput);
+      } else {
+        sessionStorage.removeItem('medguard_age');
+      }
       await reloadOverview();
     } catch {
       setProfileStatus('Could not update profile');
@@ -89,7 +106,7 @@ export default function PatientProfile() {
             <h2 className="profile-name">{displayName}</h2>
             <p className="profile-id">Patient ID: #{patientId}</p>
             <div className="profile-contact">
-              <p><span className="profile-contact-icon">✉</span> {contact.email || sessionStorage.getItem('mediguard_email') || 'N/A'}</p>
+              <p><span className="profile-contact-icon">✉</span> {contact.email || sessionStorage.getItem('medguard_email') || 'N/A'}</p>
               <p><span className="profile-contact-icon">📞</span> {contact.phone || 'N/A'}</p>
               <p><span className="profile-contact-icon">📍</span> {overview?.location || 'N/A'}</p>
             </div>
@@ -128,21 +145,41 @@ export default function PatientProfile() {
           <div className="dashboard-card profile-health-card">
             <h3 className="profile-card-heading">👤 Health Information</h3>
             <div className="profile-health-rows">
-              <a href="#age" className="profile-health-row">
-                <span>Age</span>
-                <span className="profile-health-value">{overview?.age ? `${overview.age} years` : 'Unknown'}</span>
-                <span className="profile-health-arrow">→</span>
-              </a>
-              <a href="#blood" className="profile-health-row">
-                <span>Blood Type</span>
-                <span className="profile-health-value">{overview?.blood_type || 'Unknown'}</span>
-                <span className="profile-health-arrow">→</span>
-              </a>
-              <a href="#allergies" className="profile-health-row">
-                <span>Allergies</span>
-                <span className="profile-health-value">{(overview?.allergies || []).join(', ') || 'None listed'}</span>
-                <span className="profile-health-arrow">→</span>
-              </a>
+              <div className="profile-health-row">
+                <label className="profile-health-label" htmlFor="profile-age">Age</label>
+                <input
+                  id="profile-age"
+                  className="profile-health-input"
+                  type="number"
+                  min="0"
+                  max="120"
+                  placeholder="Enter age"
+                  value={ageInput}
+                  onChange={(e) => setAgeInput(e.target.value)}
+                />
+              </div>
+              <div className="profile-health-row">
+                <label className="profile-health-label" htmlFor="profile-blood">Blood Type</label>
+                <select
+                  id="profile-blood"
+                  className="profile-health-input"
+                  value={bloodType}
+                  onChange={(e) => setBloodType(e.target.value)}
+                >
+                  <option value="">Select blood type</option>
+                  {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="profile-health-row profile-health-row-stack">
+                <label className="profile-health-label">Allergies</label>
+                <MedicationTagInput
+                  value={allergies}
+                  onChange={setAllergies}
+                  placeholder="Type allergy and press Enter (e.g. Penicillin)"
+                />
+              </div>
             </div>
           </div>
           <div className="dashboard-card profile-meds-card">

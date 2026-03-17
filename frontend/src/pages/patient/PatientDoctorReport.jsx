@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Calendar, Download, Share2, Pill, Bot, BarChart2, FileText, MessageCircle } from 'lucide-react';
 import './PatientDoctorReport.css';
 
 const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000';
@@ -24,8 +25,8 @@ const SYMPTOMS_LOG = [
 const reportDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
 export default function PatientDoctorReport() {
-  const patientId = sessionStorage.getItem('mediguard_user_id') || localStorage.getItem('mediguard_patient_id') || '';
-  const reportKey = patientId ? `mediguard_latest_report_${patientId}` : 'mediguard_latest_report';
+  const patientId = sessionStorage.getItem('medguard_user_id') || localStorage.getItem('medguard_patient_id') || '';
+  const reportKey = patientId ? `medguard_latest_report_${patientId}` : 'medguard_latest_report';
   const [latestReport, setLatestReport] = useState(patientId ? (localStorage.getItem(reportKey) || '') : '');
   const [patientProfile, setPatientProfile] = useState(null);
   const [doctorMessages, setDoctorMessages] = useState([]);
@@ -117,9 +118,11 @@ export default function PatientDoctorReport() {
     }
   };
 
-  const displayName = patientProfile?.name || sessionStorage.getItem('mediguard_displayName') || 'Patient';
-  const displayId = patientProfile?.patient_id || sessionStorage.getItem('mediguard_user_id') || 'N/A';
+  const displayName = patientProfile?.name || sessionStorage.getItem('medguard_displayName') || 'Patient';
+  const displayId = patientProfile?.patient_id || sessionStorage.getItem('medguard_user_id') || 'N/A';
   const displayAge = patientProfile?.age;
+  const bloodType = patientProfile?.blood_type;
+  const allergies = patientProfile?.allergies || [];
   const conditions = patientProfile?.conditions || [];
   const medications = patientProfile?.medications || [];
   const medicationPlan = patientProfile?.medication_plan || [];
@@ -130,16 +133,16 @@ export default function PatientDoctorReport() {
         <div>
           <h1 className="report-title">Health Report</h1>
           <p className="report-date">
-            <span className="report-date-icon">📅</span>
+            <Calendar className="report-date-icon" style={{ width: '1rem', height: '1rem', display: 'inline', verticalAlign: 'middle', marginRight: '0.35rem', color: 'var(--text-muted)' }} />
             Generated on {reportDate}
           </p>
         </div>
         <div className="report-header-actions">
           <button type="button" className="btn-report btn-report-outline">
-            <span>📥</span> Export PDF
+            <Download style={{ width: '1rem', height: '1rem', display: 'inline', verticalAlign: 'middle', marginRight: '0.35rem' }} /> Export PDF
           </button>
           <button type="button" className="btn-report btn-report-primary">
-            <span>↗</span> Share
+            <Share2 style={{ width: '1rem', height: '1rem', display: 'inline', verticalAlign: 'middle', marginRight: '0.35rem' }} /> Share
           </button>
         </div>
       </div>
@@ -149,10 +152,12 @@ export default function PatientDoctorReport() {
           <h3>{displayName}</h3>
           <p className="report-meta">Patient ID: #{displayId}</p>
           <p className="report-meta"><strong>AGE</strong><br />{displayAge || 'Unknown'}</p>
+          <p className="report-meta"><strong>BLOOD TYPE</strong><br />{bloodType || 'Unknown'}</p>
+          <p className="report-meta"><strong>ALLERGIES</strong><br />{allergies.length ? allergies.join(', ') : 'None listed'}</p>
           <p className="report-meta"><strong>CONDITIONS</strong><br />{conditions.length ? conditions.join(', ') : 'Not set'}</p>
         </div>
         <div className="dashboard-card report-card report-adherence">
-          <h3 className="report-card-title">💊 Medications Adherence</h3>
+          <h3 className="report-card-title"><Pill style={{ width: '1.1rem', height: '1.1rem', display: 'inline', verticalAlign: 'middle', marginRight: '0.4rem', color: 'var(--primary)' }} />Medications Adherence</h3>
           {(medicationPlan.length
             ? medicationPlan.map((m) => ({ name: m.name, pct: 100, detail: m.time ? `Scheduled at ${m.time}` : 'Active medication' }))
             : medications.length
@@ -175,7 +180,7 @@ export default function PatientDoctorReport() {
           ))}
         </div>
         <div className="dashboard-card report-card report-ai">
-          <h3 className="report-card-title">🤖 AI Analysis</h3>
+          <h3 className="report-card-title"><Bot style={{ width: '1.1rem', height: '1.1rem', display: 'inline', verticalAlign: 'middle', marginRight: '0.4rem', color: 'var(--primary)' }} />AI Analysis</h3>
           <p className="report-ai-intro">Based on the medication adherence and symptom data, our AI health assistant has identified the following insights:</p>
           <ul className="report-ai-list">
             {AI_INSIGHTS.map((item, i) => (
@@ -184,7 +189,7 @@ export default function PatientDoctorReport() {
           </ul>
         </div>
         <div className="dashboard-card report-card report-symptoms">
-          <h3 className="report-card-title">📊 Symptoms Log</h3>
+          <h3 className="report-card-title"><BarChart2 style={{ width: '1.1rem', height: '1.1rem', display: 'inline', verticalAlign: 'middle', marginRight: '0.4rem', color: 'var(--primary)' }} />Symptoms Log</h3>
           <ul className="report-symptoms-list">
             {SYMPTOMS_LOG.map((s, i) => (
               <li key={i} className="report-symptom-item">
@@ -198,7 +203,7 @@ export default function PatientDoctorReport() {
           </ul>
         </div>
         <div className="dashboard-card report-card report-live-output" style={{ gridColumn: '1 / -1' }}>
-          <h3 className="report-card-title">🧾 Latest AI Doctor Report (Live)</h3>
+          <h3 className="report-card-title"><FileText style={{ width: '1.1rem', height: '1.1rem', display: 'inline', verticalAlign: 'middle', marginRight: '0.4rem', color: 'var(--primary)' }} />Latest AI Doctor Report (Live)</h3>
           {latestReport ? (
             <pre className="report-live-pre">{latestReport}</pre>
           ) : (
@@ -206,7 +211,7 @@ export default function PatientDoctorReport() {
           )}
         </div>
         <div className="dashboard-card report-card report-live-output" style={{ gridColumn: '1 / -1' }}>
-          <h3 className="report-card-title">💬 Care Team Messages</h3>
+          <h3 className="report-card-title"><MessageCircle style={{ width: '1.1rem', height: '1.1rem', display: 'inline', verticalAlign: 'middle', marginRight: '0.4rem', color: 'var(--primary)' }} />Care Team Messages</h3>
           {doctorMessages.length === 0 ? (
             <p className="report-ai-intro">No messages from your doctor yet.</p>
           ) : (
